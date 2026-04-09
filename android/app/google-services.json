@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "922050755969",
+    "project_id": "cousinade-2",
+    "storage_bucket": "cousinade-2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:922050755969:android:35859d4c8279dff2943c80",
+        "android_client_info": {
+          "package_name": "com.example.cousinade_2_0"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCG9bUrda4ep4ygv2VELhhdwKAuTDMip14"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

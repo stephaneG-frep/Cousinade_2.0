@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userFamilyId() {
+      return userDoc().data.familyId;
+    }
+
+    function sameFamily(familyId) {
+      return isSignedIn() && userFamilyId() != null && userFamilyId() == familyId;
+    }
+
+    function postFamilyId(postId) {
+      return get(/databases/$(database)/documents/posts/$(postId)).data.familyId;
+    }
+
+    function conversationFamilyId(conversationId) {
+      return get(/databases/$(database)/documents/conversations/$(conversationId)).data.familyId;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.familyId == userFamilyId());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /families/{familyId} {
+      allow read: if sameFamily(familyId);
+      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if sameFamily(familyId);
+    }
+
+    match /posts/{postId} {
+      allow read, update: if sameFamily(resource.data.familyId);
+      allow create: if sameFamily(request.resource.data.familyId);
+
+      match /likes/{userId} {
+        allow read, write: if isSignedIn() && sameFamily(postFamilyId(postId));
+      }
+    }
+
+    match /comments/{commentId} {
+      allow read, update: if isSignedIn() && sameFamily(postFamilyId(resource.data.postId));
+      allow create: if isSignedIn() && sameFamily(postFamilyId(request.resource.data.postId));
+    }
+
+    match /conversations/{conversationId} {
+      allow read, update: if isSignedIn() && sameFamily(resource.data.familyId);
+      allow create: if isSignedIn() && sameFamily(request.resource.data.familyId);
+    }
+
+    match /messages/{messageId} {
+      allow read, update: if isSignedIn() && sameFamily(conversationFamilyId(resource.data.conversationId));
+      allow create: if isSignedIn() && sameFamily(conversationFamilyId(request.resource.data.conversationId));
+    }
+
+    match /events/{eventId} {
+      allow read, update: if sameFamily(resource.data.familyId);
+      allow create: if sameFamily(request.resource.data.familyId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+    }
+  }
+}
