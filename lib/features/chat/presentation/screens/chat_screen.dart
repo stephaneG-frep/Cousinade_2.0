@@ -18,22 +18,51 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+  bool _isSending = false;
+  int _lastMessageCount = 0;
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  void _scrollToBottom({bool animated = false}) {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.position.maxScrollExtent;
+    if (animated) {
+      _scrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
+    _scrollController.jumpTo(offset);
+  }
+
   Future<void> _send() async {
+    if (_isSending) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _isSending = true;
+    });
+
     final error = await ref
         .read(chatControllerProvider.notifier)
-        .sendMessage(
-          conversationId: widget.conversationId,
-          text: _controller.text,
-        );
+        .sendMessage(conversationId: widget.conversationId, text: text);
 
-    if (error != null && mounted) {
+    if (!mounted) return;
+
+    setState(() {
+      _isSending = false;
+    });
+
+    if (error != null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error)));
@@ -41,6 +70,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     _controller.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom(animated: true);
+    });
   }
 
   @override
@@ -55,7 +87,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
+                if (messages.length != _lastMessageCount) {
+                  _lastMessageCount = messages.length;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToBottom(animated: true);
+                  });
+                }
+
                 return ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(12),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
@@ -79,13 +119,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: isMine
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
                             Text(message.text),
                             const SizedBox(height: 4),
-                            Text(
-                              DateFormatter.chatTime(message.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormatter.chatTime(message.createdAt),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                if (isMine) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    message.isRead
+                                        ? Icons.done_all_rounded
+                                        : Icons.done_rounded,
+                                    size: 14,
+                                    color: message.isRead
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall?.color,
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -105,12 +166,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _send(),
                     decoration: const InputDecoration(
                       hintText: 'Ton message...',
                     ),
                   ),
                 ),
-                IconButton(onPressed: _send, icon: const Icon(Icons.send)),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _controller,
+                  builder: (context, value, _) {
+                    final canSend = !_isSending && value.text.trim().isNotEmpty;
+                    return IconButton(
+                      onPressed: canSend ? _send : null,
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                    );
+                  },
+                ),
               ],
             ),
           ),

@@ -11,6 +11,11 @@ final familyRepositoryProvider = Provider<FamilyRepository>((ref) {
 });
 
 final currentFamilyProvider = StreamProvider<FamilyModel?>((ref) {
+  final authUser = ref.watch(currentFirebaseUserProvider);
+  if (authUser == null) {
+    return Stream.value(null);
+  }
+
   final user = ref.watch(currentUserProfileProvider).valueOrNull;
   if (user == null || !user.hasFamily) {
     return Stream.value(null);
@@ -19,6 +24,11 @@ final currentFamilyProvider = StreamProvider<FamilyModel?>((ref) {
 });
 
 final familyMembersProvider = StreamProvider<List<UserModel>>((ref) {
+  final authUser = ref.watch(currentFirebaseUserProvider);
+  if (authUser == null) {
+    return Stream.value([]);
+  }
+
   final user = ref.watch(currentUserProfileProvider).valueOrNull;
   if (user == null || !user.hasFamily) {
     return Stream.value([]);
@@ -34,12 +44,26 @@ class FamilyController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
-  Future<String?> createFamily(String name) async {
-    final user = ref.read(currentUserProfileProvider).valueOrNull;
-    if (user == null) return 'Utilisateur introuvable';
+  Future<UserModel> _resolveCurrentUser() async {
+    var user = ref.read(currentUserProfileProvider).valueOrNull;
+    if (user != null) return user;
 
+    final authRepository = ref.read(authRepositoryProvider);
+    final firebaseUser =
+        ref.read(currentFirebaseUserProvider) ?? authRepository.currentAuthUser;
+    if (firebaseUser == null) {
+      throw Exception('Session utilisateur introuvable');
+    }
+
+    user = await authRepository.ensureUserProfileForAuthUser(firebaseUser);
+    ref.invalidate(currentUserProfileProvider);
+    return user;
+  }
+
+  Future<String?> createFamily(String name) async {
     state = const AsyncLoading();
     try {
+      final user = await _resolveCurrentUser();
       await ref
           .read(familyRepositoryProvider)
           .createFamily(name: name, user: user);
@@ -47,16 +71,14 @@ class FamilyController extends AsyncNotifier<void> {
       return null;
     } catch (e, st) {
       state = AsyncError(e, st);
-      return 'Creation de famille impossible';
+      return e.toString().replaceFirst('Exception: ', '');
     }
   }
 
   Future<String?> joinFamily(String code) async {
-    final user = ref.read(currentUserProfileProvider).valueOrNull;
-    if (user == null) return 'Utilisateur introuvable';
-
     state = const AsyncLoading();
     try {
+      final user = await _resolveCurrentUser();
       await ref
           .read(familyRepositoryProvider)
           .joinFamily(inviteCode: code, user: user);

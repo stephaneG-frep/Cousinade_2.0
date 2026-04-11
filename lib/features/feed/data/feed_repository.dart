@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../../../core/constants/firestore_paths.dart';
 import '../../../shared/models/comment_model.dart';
@@ -43,6 +44,8 @@ class FeedRepository {
     required UserModel author,
     required String text,
     File? image,
+    File? video,
+    void Function(double progress)? onUploadProgress,
   }) async {
     final postRef = _firestore.collection(FirestorePaths.posts).doc();
 
@@ -51,8 +54,41 @@ class FeedRepository {
       imageUrl = await _storageService.uploadFile(
         file: image,
         path: 'posts/$familyId/${postRef.id}.jpg',
+        onProgress: onUploadProgress,
       );
     }
+
+    String? videoUrl;
+    String? videoThumbnailUrl;
+    if (video != null) {
+      final extension = _extractExtension(video.path, fallback: 'mp4');
+      videoUrl = await _storageService.uploadFile(
+        file: video,
+        path: 'posts/$familyId/${postRef.id}.$extension',
+        onProgress: onUploadProgress == null
+            ? null
+            : (progress) => onUploadProgress(progress * 0.9),
+      );
+
+      final thumbnailFile = await _generateVideoThumbnail(video.path);
+      if (thumbnailFile != null) {
+        try {
+          videoThumbnailUrl = await _storageService.uploadFile(
+            file: thumbnailFile,
+            path: 'posts/$familyId/${postRef.id}_thumb.jpg',
+            onProgress: onUploadProgress == null
+                ? null
+                : (progress) => onUploadProgress(0.9 + (progress * 0.1)),
+          );
+        } finally {
+          if (await thumbnailFile.exists()) {
+            await thumbnailFile.delete();
+          }
+        }
+      }
+    }
+
+    onUploadProgress?.call(1);
 
     final post = PostModel(
       id: postRef.id,
@@ -62,12 +98,36 @@ class FeedRepository {
       authorAvatar: author.avatarUrl,
       text: text.trim().isEmpty ? null : text.trim(),
       imageUrl: imageUrl,
+      videoUrl: videoUrl,
+      videoThumbnailUrl: videoThumbnailUrl,
       createdAt: DateTime.now(),
       likeCount: 0,
       commentCount: 0,
     );
 
     await postRef.set(post.toMap());
+  }
+
+  String _extractExtension(String path, {required String fallback}) {
+    final dotIndex = path.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == path.length - 1) return fallback;
+    final ext = path.substring(dotIndex + 1).toLowerCase();
+    return ext.isEmpty ? fallback : ext;
+  }
+
+  Future<File?> _generateVideoThumbnail(String videoPath) async {
+    try {
+      final thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoPath,
+        imageFormat: ImageFormat.JPEG,
+        quality: 70,
+        maxWidth: 720,
+      );
+      if (thumbnailPath == null || thumbnailPath.isEmpty) return null;
+      return File(thumbnailPath);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> toggleLike({
@@ -132,5 +192,64 @@ class FeedRepository {
     batch.set(commentRef, comment.toMap());
     batch.update(postRef, {'commentCount': FieldValue.increment(1)});
     await batch.commit();
+  }
+
+  Future<void> updatePostText({
+    required String postId,
+    required String text,
+  }) async {
+    await _firestore.collection(FirestorePaths.posts).doc(postId).update({
+      'text': text.trim().isEmpty ? null : text.trim(),
+    });
+  }
+
+  Future<void> deletePost(String postId) async {
+    final postRef = _firestore.collection(FirestorePaths.posts).doc(postId);
+    final postDoc = await postRef.get();
+    if (!postDoc.exists || postDoc.data() == null) return;
+
+    final post = PostModel.fromMap(postDoc.data()!);
+
+    final commentsSnapshot = await _firestore
+        .collection(FirestorePaths.comments)
+        .where('postId', isEqualTo: postId)
+        .get();
+    await _deleteDocsInBatches(
+      commentsSnapshot.docs.map((doc) => doc.reference).toList(),
+    );
+
+    final likesSnapshot = await postRef.collection('likes').get();
+    await _deleteDocsInBatches(
+      likesSnapshot.docs.map((doc) => doc.reference).toList(),
+    );
+
+    await postRef.delete();
+
+    final mediaUrls = [
+      post.imageUrl,
+      post.videoUrl,
+      post.videoThumbnailUrl,
+    ].whereType<String>().toList();
+    for (final url in mediaUrls) {
+      try {
+        await _storageService.deleteFileByUrl(url);
+      } catch (_) {
+        // Ignore media cleanup failures after post deletion.
+      }
+    }
+  }
+
+  Future<void> _deleteDocsInBatches(List<DocumentReference> refs) async {
+    const batchSize = 400;
+    if (refs.isEmpty) return;
+
+    for (var i = 0; i < refs.length; i += batchSize) {
+      final end = (i + batchSize < refs.length) ? i + batchSize : refs.length;
+      final batch = _firestore.batch();
+      for (final ref in refs.sublist(i, end)) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+    }
   }
 }

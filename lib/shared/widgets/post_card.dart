@@ -4,13 +4,21 @@ import '../../core/utils/date_formatter.dart';
 import '../models/post_model.dart';
 import 'app_avatar.dart';
 import 'app_card.dart';
+import 'app_network_video.dart';
 
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post, this.onTap, this.onLike});
+  const PostCard({
+    super.key,
+    required this.post,
+    this.onTap,
+    this.onLike,
+    this.playVideo = false,
+  });
 
   final PostModel post;
   final VoidCallback? onTap;
   final VoidCallback? onLike;
+  final bool playVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +61,57 @@ class PostCard extends StatelessWidget {
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
+            ),
+          ],
+          if ((post.videoUrl ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(16)),
+              child: playVideo
+                  ? AppNetworkVideo(
+                      url: post.videoUrl!,
+                      thumbnailUrl: post.videoThumbnailUrl,
+                      enableFullscreen: true,
+                    )
+                  : AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        alignment: Alignment.center,
+                        children: [
+                          if ((post.videoThumbnailUrl ?? '').isNotEmpty)
+                            Image.network(
+                              post.videoThumbnailUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.black12,
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.videocam_outlined),
+                                  ),
+                            )
+                          else
+                            Container(
+                              color: Colors.black12,
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.videocam_outlined),
+                            ),
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: Colors.black45,
+                              borderRadius: BorderRadius.circular(27),
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ],
           const SizedBox(height: 10),

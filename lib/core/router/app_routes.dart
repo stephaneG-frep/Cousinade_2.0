@@ -17,10 +17,11 @@ class AppRoutes {
   static const conversations = '/conversations';
   static const chat = '/chat/:conversationId';
   static const eventDetail = '/event/:eventId';
-  static const createEvent = '/event/create';
+  static const createEvent = '/events/create';
   static const editProfile = '/profile/edit';
   static const notifications = '/notifications';
   static const settings = '/settings';
+  static const userGuide = '/guide';
 
   static String postDetailPath(String postId) => '/post/$postId';
   static String chatPath(String conversationId) => '/chat/$conversationId';

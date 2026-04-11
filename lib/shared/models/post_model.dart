@@ -14,6 +14,8 @@ class PostModel extends Equatable {
     this.authorAvatar,
     this.text,
     this.imageUrl,
+    this.videoUrl,
+    this.videoThumbnailUrl,
   });
 
   final String id;
@@ -23,6 +25,8 @@ class PostModel extends Equatable {
   final String? authorAvatar;
   final String? text;
   final String? imageUrl;
+  final String? videoUrl;
+  final String? videoThumbnailUrl;
   final DateTime createdAt;
   final int likeCount;
   final int commentCount;
@@ -35,6 +39,8 @@ class PostModel extends Equatable {
     String? authorAvatar,
     String? text,
     String? imageUrl,
+    String? videoUrl,
+    String? videoThumbnailUrl,
     DateTime? createdAt,
     int? likeCount,
     int? commentCount,
@@ -47,6 +53,8 @@ class PostModel extends Equatable {
       authorAvatar: authorAvatar ?? this.authorAvatar,
       text: text ?? this.text,
       imageUrl: imageUrl ?? this.imageUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
+      videoThumbnailUrl: videoThumbnailUrl ?? this.videoThumbnailUrl,
       createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
@@ -62,6 +70,8 @@ class PostModel extends Equatable {
       'authorAvatar': authorAvatar,
       'text': text,
       'imageUrl': imageUrl,
+      'videoUrl': videoUrl,
+      'videoThumbnailUrl': videoThumbnailUrl,
       'createdAt': toTimestamp(createdAt),
       'likeCount': likeCount,
       'commentCount': commentCount,
@@ -77,6 +87,8 @@ class PostModel extends Equatable {
       authorAvatar: map['authorAvatar'] as String?,
       text: map['text'] as String?,
       imageUrl: map['imageUrl'] as String?,
+      videoUrl: map['videoUrl'] as String?,
+      videoThumbnailUrl: map['videoThumbnailUrl'] as String?,
       createdAt: parseFirestoreDate(map['createdAt']),
       likeCount: (map['likeCount'] ?? 0) as int,
       commentCount: (map['commentCount'] ?? 0) as int,
@@ -92,6 +104,8 @@ class PostModel extends Equatable {
     authorAvatar,
     text,
     imageUrl,
+    videoUrl,
+    videoThumbnailUrl,
     createdAt,
     likeCount,
     commentCount,

@@ -102,6 +102,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.push(AppRoutes.register),
                   child: const Text('Pas encore de compte ? Creer un compte'),
                 ),
+                TextButton.icon(
+                  onPressed: () => context.push(AppRoutes.userGuide),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Besoin d\'aide ? Ouvrir le guide'),
+                ),
               ],
             ),
           ),

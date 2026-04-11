@@ -35,10 +35,20 @@ class FamilyRepository {
 
     final batch = _firestore.batch();
     batch.set(familyRef, family.toMap());
-    batch.update(_firestore.collection(FirestorePaths.users).doc(user.id), {
-      'familyId': familyRef.id,
-      'role': 'admin',
-    });
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(user.id),
+      {
+        'id': user.id,
+        'email': user.email,
+        'firstName': user.firstName,
+        'lastName': user.lastName,
+        'displayName': user.displayName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'familyId': familyRef.id,
+        'role': 'admin',
+      },
+      SetOptions(merge: true),
+    );
     await batch.commit();
   }
 
@@ -64,10 +74,20 @@ class FamilyRepository {
       'membersCount': FieldValue.increment(1),
     });
 
-    batch.update(_firestore.collection(FirestorePaths.users).doc(user.id), {
-      'familyId': familyDoc.id,
-      'role': 'member',
-    });
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(user.id),
+      {
+        'id': user.id,
+        'email': user.email,
+        'firstName': user.firstName,
+        'lastName': user.lastName,
+        'displayName': user.displayName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'familyId': familyDoc.id,
+        'role': 'member',
+      },
+      SetOptions(merge: true),
+    );
 
     await batch.commit();
   }

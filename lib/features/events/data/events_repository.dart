@@ -12,13 +12,14 @@ class EventsRepository {
     return _firestore
         .collection(FirestorePaths.events)
         .where('familyId', isEqualTo: familyId)
-        .orderBy('startDate', descending: false)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final events = snapshot.docs
               .map((doc) => EventModel.fromMap(doc.data()))
-              .toList(),
-        );
+              .toList();
+          events.sort((a, b) => a.startDate.compareTo(b.startDate));
+          return events;
+        });
   }
 
   Stream<EventModel?> watchEvent(String eventId) {

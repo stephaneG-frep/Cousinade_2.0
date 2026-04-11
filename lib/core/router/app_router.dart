@@ -20,12 +20,17 @@ import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/profile/presentation/screens/notifications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
+import '../../features/profile/presentation/screens/user_guide_screen.dart';
+import '../utils/startup_splash_provider.dart';
+import '../utils/user_guide_provider.dart';
 import 'app_routes.dart';
 import 'main_shell_scaffold.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authAsync = ref.watch(authStateChangesProvider);
   final profileAsync = ref.watch(currentUserProfileProvider);
+  final guideState = ref.watch(userGuideProvider);
+  final splashDelay = ref.watch(startupSplashDelayProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -36,14 +41,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           location == AppRoutes.login ||
           location == AppRoutes.register ||
           location == AppRoutes.forgotPassword;
+      final isUserGuide = location == AppRoutes.userGuide;
       final isFamilySetup = location == AppRoutes.createOrJoinFamily;
+      final isSplashLoading = splashDelay.isLoading;
+
+      if (isSplashLoading) {
+        return isSplash ? null : AppRoutes.splash;
+      }
+
+      if (!guideState.isLoaded) return null;
+      if (!guideState.hasSeenGuide && !isUserGuide) {
+        return AppRoutes.userGuide;
+      }
+
       final authUser = authAsync.valueOrNull;
       if (authUser == null) {
-        if (isAuthRoute) return null;
+        if (isAuthRoute || isUserGuide) return null;
         return AppRoutes.login;
       }
 
-      if (profileAsync.isLoading) {
+      if (profileAsync.isLoading || profileAsync.hasError) {
+        if (isSplash) return AppRoutes.home;
         return null;
       }
 
@@ -170,6 +188,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.userGuide,
+        builder: (context, state) => const UserGuideScreen(),
       ),
     ],
   );

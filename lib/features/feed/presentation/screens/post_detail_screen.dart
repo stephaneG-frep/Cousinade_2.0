@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../../shared/models/post_model.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/post_card.dart';
@@ -40,32 +42,162 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     _commentController.clear();
   }
 
+  Future<void> _editPost(PostModel post) async {
+    var draftText = post.text ?? '';
+    final newText = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifier la publication'),
+          content: TextFormField(
+            initialValue: draftText,
+            onChanged: (value) => draftText = value,
+            maxLines: 5,
+            decoration: const InputDecoration(hintText: 'Ton message...'),
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) {
+              Navigator.of(context).pop(draftText);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(draftText),
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newText == null) return;
+
+    final error = await ref
+        .read(feedControllerProvider.notifier)
+        .updatePostText(post: post, text: newText);
+
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Publication mise a jour')));
+  }
+
+  Future<void> _deletePost(PostModel post) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer la publication'),
+          content: const Text(
+            'Cette action est definitive. Les commentaires seront supprimes.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    final error = await ref
+        .read(feedControllerProvider.notifier)
+        .deletePost(post);
+    if (!mounted) return;
+
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Publication supprimee')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final postAsync = ref.watch(postDetailProvider(widget.postId));
     final commentsAsync = ref.watch(postCommentsProvider(widget.postId));
+    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
+    final post = postAsync.valueOrNull;
+    final canManage = post != null && currentUser?.id == post.authorId;
+    final managedPost = canManage ? post : null;
+    final hasVideo = (post?.videoUrl ?? '').isNotEmpty;
+    final topSectionFlex = hasVideo ? 7 : 4;
+    final commentsSectionFlex = hasVideo ? 3 : 5;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Publication')),
+      appBar: AppBar(
+        title: const Text('Publication'),
+        actions: [
+          if (managedPost != null)
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  await _editPost(managedPost);
+                } else if (value == 'delete') {
+                  await _deletePost(managedPost);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem<String>(value: 'edit', child: Text('Modifier')),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Text('Supprimer'),
+                ),
+              ],
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          postAsync.when(
-            data: (post) {
-              if (post == null) return const SizedBox.shrink();
-              return PostCard(
-                post: post,
-                onLike: () =>
-                    ref.read(feedControllerProvider.notifier).toggleLike(post),
-              );
-            },
-            error: (error, _) => ErrorStateWidget(message: error.toString()),
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: LoadingWidget(),
+          Expanded(
+            flex: topSectionFlex,
+            child: postAsync.when(
+              data: (post) {
+                if (post == null) return const SizedBox.shrink();
+                return SingleChildScrollView(
+                  child: PostCard(
+                    post: post,
+                    playVideo: true,
+                    onLike: () => ref
+                        .read(feedControllerProvider.notifier)
+                        .toggleLike(post),
+                  ),
+                );
+              },
+              error: (error, _) => ErrorStateWidget(message: error.toString()),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LoadingWidget(),
+              ),
             ),
           ),
           const Divider(height: 1),
           Expanded(
+            flex: commentsSectionFlex,
             child: commentsAsync.when(
               data: (comments) {
                 if (comments.isEmpty) {

@@ -39,6 +39,25 @@ class ChatRepository {
         );
   }
 
+  Stream<int> watchUnreadCount({
+    required String conversationId,
+    required String currentUserId,
+  }) {
+    return _firestore
+        .collection(FirestorePaths.messages)
+        .where('conversationId', isEqualTo: conversationId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .where(
+                (doc) =>
+                    (doc.data()['isRead'] as bool? ?? false) == false &&
+                    (doc.data()['senderId'] as String?) != currentUserId,
+              )
+              .length,
+        );
+  }
+
   Future<String> createOrGetConversation({
     required String familyId,
     required String currentUserId,
@@ -108,16 +127,19 @@ class ChatRepository {
     final query = await _firestore
         .collection(FirestorePaths.messages)
         .where('conversationId', isEqualTo: conversationId)
-        .where('isRead', isEqualTo: false)
         .get();
 
     final batch = _firestore.batch();
+    var hasUpdates = false;
     for (final doc in query.docs) {
-      if ((doc.data()['senderId'] as String?) != currentUserId) {
+      final data = doc.data();
+      final isUnread = (data['isRead'] as bool? ?? false) == false;
+      if (isUnread && (data['senderId'] as String?) != currentUserId) {
         batch.update(doc.reference, {'isRead': true});
+        hasUpdates = true;
       }
     }
-
+    if (!hasUpdates) return;
     await batch.commit();
   }
 }

@@ -91,7 +91,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       return;
     }
 
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(true);
   }
 
   @override

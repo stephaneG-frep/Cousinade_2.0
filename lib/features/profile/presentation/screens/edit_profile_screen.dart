@@ -47,6 +47,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _save() async {
+    if (ref.read(profileControllerProvider).isLoading) return;
     if (!_formKey.currentState!.validate()) return;
 
     final error = await ref
@@ -67,7 +68,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
 
-    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profil mis a jour')));
+    Navigator.of(context).pop(true);
   }
 
   @override

@@ -26,27 +26,35 @@ class NotificationsScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
-            itemCount: notifications.length,
-            itemBuilder: (context, index) {
-              final item = notifications[index];
-              return ListTile(
-                leading: Icon(
-                  item.isRead ? Icons.notifications_none : Icons.notifications,
-                ),
-                title: Text(item.title),
-                subtitle: Text(
-                  '${item.body}\n${DateFormatter.shortDateTime(item.createdAt)}',
-                ),
-                isThreeLine: true,
-                onTap: () => ref
-                    .read(profileControllerProvider.notifier)
-                    .markNotificationRead(item.id),
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(notificationsProvider.future),
+            child: ListView.builder(
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final item = notifications[index];
+                return ListTile(
+                  leading: Icon(
+                    item.isRead
+                        ? Icons.notifications_none
+                        : Icons.notifications,
+                  ),
+                  title: Text(item.title),
+                  subtitle: Text(
+                    '${item.body}\n${DateFormatter.shortDateTime(item.createdAt)}',
+                  ),
+                  isThreeLine: true,
+                  onTap: () => ref
+                      .read(profileControllerProvider.notifier)
+                      .markNotificationRead(item.id),
+                );
+              },
+            ),
           );
         },
-        error: (error, _) => ErrorStateWidget(message: error.toString()),
+        error: (error, _) => ErrorStateWidget(
+          message: error.toString(),
+          onRetry: () => ref.invalidate(notificationsProvider),
+        ),
         loading: () => const LoadingWidget(),
       ),
     );

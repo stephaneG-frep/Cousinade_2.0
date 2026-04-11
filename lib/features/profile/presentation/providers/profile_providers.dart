@@ -31,6 +31,9 @@ final userByIdProvider = StreamProvider.family<UserModel?, String>((
 });
 
 final notificationsProvider = StreamProvider<List<NotificationModel>>((ref) {
+  final authUser = ref.watch(currentFirebaseUserProvider);
+  if (authUser == null) return Stream.value([]);
+
   final user = ref.watch(currentUserProfileProvider).valueOrNull;
   if (user == null) return Stream.value([]);
   return ref
@@ -45,17 +48,31 @@ class ProfileController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
+  Future<UserModel> _resolveCurrentUser() async {
+    var user = ref.read(currentUserProfileProvider).valueOrNull;
+    if (user != null) return user;
+
+    final authRepository = ref.read(authRepositoryProvider);
+    final firebaseUser =
+        ref.read(currentFirebaseUserProvider) ?? authRepository.currentAuthUser;
+    if (firebaseUser == null) {
+      throw Exception('Session utilisateur introuvable');
+    }
+
+    user = await authRepository.ensureUserProfileForAuthUser(firebaseUser);
+    ref.invalidate(currentUserProfileProvider);
+    return user;
+  }
+
   Future<String?> updateProfile({
     required String firstName,
     required String lastName,
     required String bio,
     File? avatar,
   }) async {
-    final current = ref.read(currentUserProfileProvider).valueOrNull;
-    if (current == null) return 'Utilisateur introuvable';
-
     state = const AsyncLoading();
     try {
+      final current = await _resolveCurrentUser();
       await ref
           .read(profileRepositoryProvider)
           .updateProfile(
@@ -69,7 +86,7 @@ class ProfileController extends AsyncNotifier<void> {
       return null;
     } catch (e, st) {
       state = AsyncError(e, st);
-      return 'Mise a jour impossible';
+      return e.toString().replaceFirst('Exception: ', '');
     }
   }
 

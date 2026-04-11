@@ -22,6 +22,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/posts/$(postId)).data.familyId;
     }
 
+    function postAuthorId(postId) {
+      return get(/databases/$(database)/documents/posts/$(postId)).data.authorId;
+    }
+
     function conversationFamilyId(conversationId) {
       return get(/databases/$(database)/documents/conversations/$(conversationId)).data.familyId;
     }
@@ -39,7 +43,12 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow read, update: if sameFamily(resource.data.familyId);
+      allow read: if sameFamily(resource.data.familyId);
+      allow update: if sameFamily(resource.data.familyId) && (
+        request.auth.uid == resource.data.authorId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount'])
+      );
+      allow delete: if sameFamily(resource.data.familyId) && request.auth.uid == resource.data.authorId;
       allow create: if sameFamily(request.resource.data.familyId);
 
       match /likes/{userId} {
@@ -49,6 +58,11 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read, update: if isSignedIn() && sameFamily(postFamilyId(resource.data.postId));
+      allow delete: if isSignedIn() &&
+        sameFamily(postFamilyId(resource.data.postId)) && (
+          request.auth.uid == resource.data.authorId ||
+          request.auth.uid == postAuthorId(resource.data.postId)
+        );
       allow create: if isSignedIn() && sameFamily(postFamilyId(request.resource.data.postId));
     }
 

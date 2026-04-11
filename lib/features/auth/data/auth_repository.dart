@@ -63,6 +63,50 @@ class AuthRepository {
 
   Future<void> logout() => _authService.logout();
 
+  Future<UserModel> ensureUserProfileForAuthUser(User authUser) async {
+    final userRef = _firestore
+        .collection(FirestorePaths.users)
+        .doc(authUser.uid);
+    final existing = await userRef.get();
+
+    if (existing.exists && existing.data() != null) {
+      return UserModel.fromMap(existing.data()!);
+    }
+
+    final email = (authUser.email ?? '').trim();
+    final rawDisplayName = (authUser.displayName ?? '').trim();
+
+    String firstName = 'Membre';
+    String lastName = '';
+    String displayName = 'Membre';
+
+    if (rawDisplayName.isNotEmpty) {
+      final parts = rawDisplayName.split(RegExp(r'\s+'));
+      firstName = parts.first;
+      if (parts.length > 1) {
+        lastName = parts.skip(1).join(' ');
+      }
+      displayName = rawDisplayName;
+    } else if (email.isNotEmpty) {
+      final fallback = email.split('@').first;
+      firstName = fallback;
+      displayName = fallback;
+    }
+
+    final userModel = UserModel(
+      id: authUser.uid,
+      role: 'member',
+      firstName: firstName,
+      lastName: lastName,
+      displayName: displayName,
+      email: email,
+      createdAt: DateTime.now(),
+    );
+
+    await userRef.set(userModel.toMap(), SetOptions(merge: true));
+    return userModel;
+  }
+
   Stream<UserModel?> watchUserProfile(String userId) {
     return _firestore
         .collection(FirestorePaths.users)

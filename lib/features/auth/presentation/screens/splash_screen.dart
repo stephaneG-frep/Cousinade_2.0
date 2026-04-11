@@ -10,9 +10,12 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.cream, AppColors.roseBeige],
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).colorScheme.surface,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -22,16 +25,22 @@ class SplashScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 86,
-                height: 86,
+                width: 240,
+                height: 240,
                 decoration: BoxDecoration(
-                  color: AppColors.orange,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.lightShadow,
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.groups_rounded,
-                  size: 42,
-                  color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/images/cousinade_logo.jpeg',
+                  fit: BoxFit.cover,
                 ),
               ),
               const SizedBox(height: 18),
@@ -40,7 +49,10 @@ class SplashScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
-              Text(AppStrings.slogan),
+              Text(
+                AppStrings.slogan,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: 20),
               const CircularProgressIndicator(),
             ],

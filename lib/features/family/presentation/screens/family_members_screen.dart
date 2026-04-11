@@ -24,7 +24,14 @@ class FamilyMembersScreen extends ConsumerWidget {
         .startConversationWith(userId);
 
     if (conversationId != null && context.mounted) {
-      context.push('/chat/$conversationId');
+      context.push(AppRoutes.chatPath(conversationId));
+      return;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible d\'ouvrir la conversation')),
+      );
     }
   }
 
@@ -50,34 +57,49 @@ class FamilyMembersScreen extends ConsumerWidget {
       body: membersAsync.when(
         data: (members) {
           if (members.isEmpty) {
-            return const EmptyStateWidget(
+            return EmptyStateWidget(
               title: 'Aucun membre',
               subtitle: 'Ajoutez des proches avec votre code famille.',
               icon: Icons.group_outlined,
+              action: FilledButton.icon(
+                onPressed: () => context.push(AppRoutes.createOrJoinFamily),
+                icon: const Icon(Icons.group_add_outlined),
+                label: const Text('Inviter un membre'),
+              ),
             );
           }
 
-          return ListView.builder(
-            itemCount: members.length,
-            itemBuilder: (context, index) {
-              final member = members[index];
-              return UserTile(
-                user: member,
-                trailing: member.id == currentUser?.id
-                    ? const SizedBox.shrink()
-                    : IconButton(
-                        icon: const Icon(Icons.chat_bubble_outline),
-                        onPressed: () => _openChat(context, ref, member.id),
-                      ),
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(familyMembersProvider.future),
+            child: ListView.builder(
+              itemCount: members.length,
+              itemBuilder: (context, index) {
+                final member = members[index];
+                return UserTile(
+                  user: member,
+                  trailing: member.id == currentUser?.id
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          onPressed: () => _openChat(context, ref, member.id),
+                        ),
+                );
+              },
+            ),
           );
         },
-        error: (error, _) => ErrorStateWidget(message: error.toString()),
+        error: (error, _) => ErrorStateWidget(
+          message: error.toString(),
+          onRetry: () {
+            ref.invalidate(familyMembersProvider);
+            ref.invalidate(currentFamilyProvider);
+          },
+        ),
         loading: () =>
             const LoadingWidget(message: 'Chargement des membres...'),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'family_invite_fab',
         onPressed: () => context.push(AppRoutes.createOrJoinFamily),
         icon: const Icon(Icons.group_add),
         label: const Text('Invitation'),

@@ -30,20 +30,31 @@ class ProfileRepository {
     required String bio,
     File? avatar,
   }) async {
-    String? avatarUrl;
-    if (avatar != null) {
-      avatarUrl = await _storageService.uploadFile(
-        file: avatar,
-        path: 'avatars/$userId.jpg',
-      );
-    }
-
-    await _firestore.collection(FirestorePaths.users).doc(userId).update({
+    await _firestore.collection(FirestorePaths.users).doc(userId).set({
+      'id': userId,
       'firstName': firstName.trim(),
       'lastName': lastName.trim(),
       'displayName': '${firstName.trim()} ${lastName.trim()}'.trim(),
       'bio': bio.trim(),
-      if (avatarUrl case final String value) 'avatarUrl': value,
-    });
+    }, SetOptions(merge: true));
+
+    if (avatar == null) return;
+
+    try {
+      final avatarUrl = await _storageService.uploadFile(
+        file: avatar,
+        path: 'avatars/$userId.jpg',
+      );
+      await _firestore.collection(FirestorePaths.users).doc(userId).set({
+        'avatarUrl': avatarUrl,
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found' || e.code == 'unknown') {
+        throw Exception(
+          'Photo non envoyee: active Firebase Storage dans Firebase Console (Storage > Get Started).',
+        );
+      }
+      throw Exception(e.message ?? 'Echec upload photo');
+    }
   }
 }

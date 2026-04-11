@@ -21,30 +21,59 @@ class EventsListScreen extends ConsumerWidget {
       body: eventsAsync.when(
         data: (events) {
           if (events.isEmpty) {
-            return const EmptyStateWidget(
+            return EmptyStateWidget(
               title: 'Aucun evenement',
               subtitle: 'Cree le prochain moment familial.',
               icon: Icons.event_available_outlined,
+              action: FilledButton.icon(
+                onPressed: () async {
+                  final created = await context.push<bool>(
+                    AppRoutes.createEvent,
+                  );
+                  if (created == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Evenement cree')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Creer un evenement'),
+              ),
             );
           }
 
-          return ListView.builder(
-            itemCount: events.length,
-            itemBuilder: (context, index) {
-              final event = events[index];
-              return EventCard(
-                event: event,
-                onTap: () => context.push('/event/${event.id}'),
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(familyEventsProvider.future),
+            child: ListView.builder(
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return EventCard(
+                  event: event,
+                  onTap: () =>
+                      context.push(AppRoutes.eventDetailPath(event.id)),
+                );
+              },
+            ),
           );
         },
-        error: (error, _) => ErrorStateWidget(message: error.toString()),
+        error: (error, _) => ErrorStateWidget(
+          message: error.toString(),
+          onRetry: () => ref.invalidate(familyEventsProvider),
+        ),
         loading: () =>
             const LoadingWidget(message: 'Chargement des evenements...'),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.createEvent),
+        heroTag: 'events_create_fab',
+        onPressed: () async {
+          final created = await context.push<bool>(AppRoutes.createEvent);
+          if (created == true && context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Evenement cree')));
+          }
+        },
         icon: const Icon(Icons.add),
         label: const Text('Nouvel evenement'),
       ),
