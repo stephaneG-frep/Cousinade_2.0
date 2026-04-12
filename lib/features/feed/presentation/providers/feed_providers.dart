@@ -171,12 +171,39 @@ class FeedController extends AsyncNotifier<void> {
   Future<String?> deletePost(PostModel post) async {
     try {
       final user = await _resolveCurrentUser();
-      if (user.id != post.authorId) {
+      final isAdmin = user.role == 'admin';
+      if (user.id != post.authorId && !isAdmin) {
         return 'Tu ne peux supprimer que tes publications';
       }
 
       state = const AsyncLoading();
       await ref.read(feedRepositoryProvider).deletePost(post.id);
+      state = const AsyncData(null);
+      return null;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  Future<String?> removePostMedia({
+    required PostModel post,
+    required String mediaType,
+  }) async {
+    try {
+      final user = await _resolveCurrentUser();
+      final isAdmin = user.role == 'admin';
+      if (user.id != post.authorId && !isAdmin) {
+        return 'Tu ne peux modifier que tes publications';
+      }
+      if (mediaType != 'image' && mediaType != 'video') {
+        return 'Type de media invalide';
+      }
+
+      state = const AsyncLoading();
+      await ref
+          .read(feedRepositoryProvider)
+          .removePostMedia(post: post, mediaType: mediaType);
       state = const AsyncData(null);
       return null;
     } catch (e, st) {

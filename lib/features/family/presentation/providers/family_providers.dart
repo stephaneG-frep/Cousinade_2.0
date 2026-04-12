@@ -89,4 +89,76 @@ class FamilyController extends AsyncNotifier<void> {
       return e.toString().replaceFirst('Exception: ', '');
     }
   }
+
+  Future<String?> autoJoinDefaultFamily() async {
+    state = const AsyncLoading();
+    try {
+      final user = await _resolveCurrentUser();
+      await ref
+          .read(familyRepositoryProvider)
+          .autoJoinDefaultFamily(user: user);
+      ref.invalidate(currentUserProfileProvider);
+      ref.invalidate(currentFamilyProvider);
+      state = const AsyncData(null);
+      return null;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  Future<String?> removeMember(String memberId) async {
+    state = const AsyncLoading();
+    try {
+      final admin = await _resolveCurrentUser();
+      if (admin.role != 'admin') {
+        state = const AsyncData(null);
+        return 'Acces reserve aux administrateurs';
+      }
+      if (admin.id == memberId) {
+        state = const AsyncData(null);
+        return 'Impossible de se retirer soi-meme';
+      }
+      if (!admin.hasFamily) {
+        state = const AsyncData(null);
+        return 'Famille introuvable';
+      }
+      await ref
+          .read(familyRepositoryProvider)
+          .removeMember(familyId: admin.familyId!, memberId: memberId);
+      ref.invalidate(familyMembersProvider);
+      state = const AsyncData(null);
+      return null;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  Future<String?> updateMemberRole({
+    required String memberId,
+    required String role,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final admin = await _resolveCurrentUser();
+      if (admin.role != 'admin') {
+        state = const AsyncData(null);
+        return 'Acces reserve aux administrateurs';
+      }
+      if (admin.id == memberId && role != 'admin') {
+        state = const AsyncData(null);
+        return 'Impossible de retirer ton propre role admin';
+      }
+      await ref
+          .read(familyRepositoryProvider)
+          .updateMemberRole(memberId: memberId, role: role);
+      ref.invalidate(familyMembersProvider);
+      state = const AsyncData(null);
+      return null;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
 }

@@ -14,6 +14,8 @@ class UserModel extends Equatable {
     this.familyId,
     this.avatarUrl,
     this.bio,
+    this.isOnline,
+    this.lastActiveAt,
   });
 
   final String id;
@@ -26,8 +28,15 @@ class UserModel extends Equatable {
   final String? avatarUrl;
   final String? bio;
   final DateTime createdAt;
+  final bool? isOnline;
+  final DateTime? lastActiveAt;
 
   bool get hasFamily => (familyId ?? '').isNotEmpty;
+  bool get isOnlineNow {
+    if (isOnline != true || lastActiveAt == null) return false;
+    final diff = DateTime.now().difference(lastActiveAt!);
+    return diff.inMinutes < 5;
+  }
 
   UserModel copyWith({
     String? id,
@@ -40,6 +49,8 @@ class UserModel extends Equatable {
     String? avatarUrl,
     String? bio,
     DateTime? createdAt,
+    bool? isOnline,
+    DateTime? lastActiveAt,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -52,6 +63,8 @@ class UserModel extends Equatable {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,
       createdAt: createdAt ?? this.createdAt,
+      isOnline: isOnline ?? this.isOnline,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
     );
   }
 
@@ -67,6 +80,8 @@ class UserModel extends Equatable {
       'avatarUrl': avatarUrl,
       'bio': bio,
       'createdAt': toTimestamp(createdAt),
+      'isOnline': isOnline,
+      'lastActiveAt': lastActiveAt == null ? null : toTimestamp(lastActiveAt!),
     };
   }
 
@@ -82,6 +97,10 @@ class UserModel extends Equatable {
       avatarUrl: map['avatarUrl'] as String?,
       bio: map['bio'] as String?,
       createdAt: parseFirestoreDate(map['createdAt']),
+      isOnline: map['isOnline'] as bool?,
+      lastActiveAt: map['lastActiveAt'] == null
+          ? null
+          : parseFirestoreDate(map['lastActiveAt']),
     );
   }
 
@@ -97,5 +116,7 @@ class UserModel extends Equatable {
     avatarUrl,
     bio,
     createdAt,
+    isOnline,
+    lastActiveAt,
   ];
 }

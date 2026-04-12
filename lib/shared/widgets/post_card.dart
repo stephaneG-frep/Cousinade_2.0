@@ -13,12 +13,16 @@ class PostCard extends StatelessWidget {
     this.onTap,
     this.onLike,
     this.playVideo = false,
+    this.isNew = false,
+    this.headerTrailing,
   });
 
   final PostModel post;
   final VoidCallback? onTap;
   final VoidCallback? onLike;
   final bool playVideo;
+  final bool isNew;
+  final Widget? headerTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,29 @@ class PostCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (headerTrailing != null) ...[
+                const SizedBox(width: 6),
+                headerTrailing!,
+              ],
+              if (isNew)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Nouveau',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
             ],
           ),
           if ((post.text ?? '').isNotEmpty) ...[

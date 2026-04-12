@@ -22,6 +22,7 @@ class AppRoutes {
   static const notifications = '/notifications';
   static const settings = '/settings';
   static const userGuide = '/guide';
+  static const admin = '/admin';
 
   static String postDetailPath(String postId) => '/post/$postId';
   static String chatPath(String conversationId) => '/chat/$conversationId';

@@ -3,19 +3,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/one_time_tip_card.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../family/presentation/providers/family_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/chat_providers.dart';
 
-class ConversationsScreen extends ConsumerWidget {
+class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConversationsScreen> createState() =>
+      _ConversationsScreenState();
+}
+
+class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
+    final membersAsync = ref.watch(familyMembersProvider);
+    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Messages')),
@@ -34,16 +54,76 @@ class ConversationsScreen extends ConsumerWidget {
             );
           }
 
+          final members =
+              membersAsync.valueOrNull ?? const [];
+          final memberMap = {
+            for (final member in members) member.id: member,
+          };
+
+          final filteredConversations = _query.isEmpty
+              ? conversations
+              : conversations.where((conversation) {
+                  final messageMatch = conversation.lastMessage
+                      .toLowerCase()
+                      .contains(_query.toLowerCase());
+                  if (messageMatch) return true;
+                  if (currentUser == null) return false;
+                  final otherUserId = conversation.participantIds.firstWhere(
+                    (id) => id != currentUser.id,
+                    orElse: () =>
+                        conversation.participantIds.isNotEmpty
+                            ? conversation.participantIds.first
+                            : '',
+                  );
+                  if (otherUserId.isEmpty) return false;
+                  final otherUser = memberMap[otherUserId];
+                  if (otherUser == null) return false;
+                  return otherUser.displayName
+                      .toLowerCase()
+                      .contains(_query.toLowerCase());
+                }).toList();
+
+          if (filteredConversations.isEmpty) {
+            return EmptyStateWidget(
+              title: 'Aucun resultat',
+              subtitle: 'Essaie un autre prenom ou message.',
+              icon: Icons.search_off_outlined,
+            );
+          }
+
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(conversationsProvider.future),
             child: ListView.builder(
-              itemCount: conversations.length,
+              itemCount: filteredConversations.length + 2,
               itemBuilder: (context, index) {
-                final conversation = conversations[index];
+                if (index == 0) {
+                  return const OneTimeTipCard(
+                    storageKey: 'tip_messages',
+                    title: 'Messages',
+                    message:
+                        'Chaque conversation est privee avec un membre de ta famille.',
+                    icon: Icons.chat_bubble_outline,
+                  );
+                }
+                if (index == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(() => _query = value),
+                      decoration: const InputDecoration(
+                        hintText: 'Rechercher une conversation...',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  );
+                }
+                final conversation = filteredConversations[index - 2];
                 return _ConversationTile(
                   conversationId: conversation.id,
                   lastMessage: conversation.lastMessage,
                   participantIds: conversation.participantIds,
+                  query: _query,
                 );
               },
             ),
@@ -65,11 +145,13 @@ class _ConversationTile extends ConsumerWidget {
     required this.conversationId,
     required this.lastMessage,
     required this.participantIds,
+    required this.query,
   });
 
   final String conversationId;
   final String lastMessage;
   final List<String> participantIds;
+  final String query;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -92,8 +174,40 @@ class _ConversationTile extends ConsumerWidget {
 
     return userAsync.when(
       data: (user) {
+        if (query.isNotEmpty) {
+          final haystack = '${user?.displayName ?? ''} $lastMessage'
+              .toLowerCase();
+          if (!haystack.contains(query.toLowerCase())) {
+            return const SizedBox.shrink();
+          }
+        }
+        final isOnline = user?.isOnlineNow == true;
         return ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+          leading: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AppAvatar(
+                initial: user?.displayName ?? 'M',
+                imageUrl: user?.avatarUrl,
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: isOnline ? Colors.greenAccent.shade400 : Colors.grey,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           title: Text(
             user?.displayName ?? 'Membre',
             style: TextStyle(

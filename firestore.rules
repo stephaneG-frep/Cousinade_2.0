@@ -14,6 +14,10 @@ service cloud.firestore {
       return userDoc().data.familyId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && userDoc().data.role == 'admin';
+    }
+
     function sameFamily(familyId) {
       return isSignedIn() && userFamilyId() != null && userFamilyId() == familyId;
     }
@@ -33,22 +37,42 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.familyId == userFamilyId());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId ||
+        (
+          isAdmin() &&
+          resource.data.familyId == userFamilyId() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyId', 'role'])
+        )
+      );
     }
 
     match /families/{familyId} {
-      allow read: if sameFamily(familyId);
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update: if sameFamily(familyId);
+      allow update: if sameFamily(familyId) || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membersCount'])
+      );
     }
 
     match /posts/{postId} {
       allow read: if sameFamily(resource.data.familyId);
       allow update: if sameFamily(resource.data.familyId) && (
         request.auth.uid == resource.data.authorId ||
+        (
+          isAdmin() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'imageUrl',
+            'videoUrl',
+            'videoThumbnailUrl'
+          ])
+        ) ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount'])
       );
-      allow delete: if sameFamily(resource.data.familyId) && request.auth.uid == resource.data.authorId;
+      allow delete: if sameFamily(resource.data.familyId) && (
+        request.auth.uid == resource.data.authorId || isAdmin()
+      );
       allow create: if sameFamily(request.resource.data.familyId);
 
       match /likes/{userId} {
@@ -61,7 +85,8 @@ service cloud.firestore {
       allow delete: if isSignedIn() &&
         sameFamily(postFamilyId(resource.data.postId)) && (
           request.auth.uid == resource.data.authorId ||
-          request.auth.uid == postAuthorId(resource.data.postId)
+          request.auth.uid == postAuthorId(resource.data.postId) ||
+          isAdmin()
         );
       allow create: if isSignedIn() && sameFamily(postFamilyId(request.resource.data.postId));
     }

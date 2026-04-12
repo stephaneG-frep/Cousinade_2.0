@@ -21,6 +21,7 @@ import '../../features/profile/presentation/screens/notifications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/user_guide_screen.dart';
+import '../../features/profile/presentation/screens/admin_screen.dart';
 import '../utils/startup_splash_provider.dart';
 import '../utils/user_guide_provider.dart';
 import 'app_routes.dart';
@@ -192,6 +193,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.userGuide,
         builder: (context, state) => const UserGuideScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.admin,
+        builder: (context, state) => const AdminScreen(),
       ),
     ],
   );

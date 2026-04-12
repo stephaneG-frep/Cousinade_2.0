@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/one_time_tip_card.dart';
 import '../providers/feed_providers.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
@@ -104,6 +105,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const OneTimeTipCard(
+            storageKey: 'tip_publish',
+            title: 'Publier',
+            message:
+                'Ecris un message et ajoute une photo ou une video si tu veux.',
+            icon: Icons.edit_note_outlined,
+          ),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -57,4 +57,14 @@ class ProfileRepository {
       throw Exception(e.message ?? 'Echec upload photo');
     }
   }
+
+  Future<void> updatePresence({
+    required String userId,
+    required bool isOnline,
+  }) async {
+    await _firestore.collection(FirestorePaths.users).doc(userId).set({
+      'isOnline': isOnline,
+      'lastActiveAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 }

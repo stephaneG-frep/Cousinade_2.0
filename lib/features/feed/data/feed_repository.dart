@@ -203,6 +203,44 @@ class FeedRepository {
     });
   }
 
+  Future<void> removePostMedia({
+    required PostModel post,
+    required String mediaType,
+  }) async {
+    final updates = <String, dynamic>{};
+    final urlsToDelete = <String>[];
+
+    if (mediaType == 'image') {
+      if ((post.imageUrl ?? '').isNotEmpty) {
+        updates['imageUrl'] = null;
+        urlsToDelete.add(post.imageUrl!);
+      }
+    } else if (mediaType == 'video') {
+      if ((post.videoUrl ?? '').isNotEmpty) {
+        updates['videoUrl'] = null;
+        urlsToDelete.add(post.videoUrl!);
+      }
+      if ((post.videoThumbnailUrl ?? '').isNotEmpty) {
+        updates['videoThumbnailUrl'] = null;
+        urlsToDelete.add(post.videoThumbnailUrl!);
+      }
+    }
+
+    if (updates.isEmpty) return;
+
+    await _firestore.collection(FirestorePaths.posts).doc(post.id).update(
+      updates,
+    );
+
+    for (final url in urlsToDelete) {
+      try {
+        await _storageService.deleteFileByUrl(url);
+      } catch (_) {
+        // Ignore media cleanup failures after post update.
+      }
+    }
+  }
+
   Future<void> deletePost(String postId) async {
     final postRef = _firestore.collection(FirestorePaths.posts).doc(postId);
     final postDoc = await postRef.get();

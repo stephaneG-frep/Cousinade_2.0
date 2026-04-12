@@ -14,6 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Parametres')),
@@ -29,6 +30,13 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Notifications'),
             onTap: () => context.push(AppRoutes.notifications),
           ),
+          if (currentUser?.role == 'admin')
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings_outlined),
+              title: const Text('Espace admin'),
+              subtitle: const Text('Gestion simple de la famille'),
+              onTap: () => context.push(AppRoutes.admin),
+            ),
           ListTile(
             leading: const Icon(Icons.menu_book_outlined),
             title: const Text('Mode d\'emploi'),

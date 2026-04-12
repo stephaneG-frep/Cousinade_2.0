@@ -7,183 +7,226 @@ import '../../../../core/utils/user_guide_provider.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
-class UserGuideScreen extends ConsumerWidget {
+class UserGuideScreen extends ConsumerStatefulWidget {
   const UserGuideScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UserGuideScreen> createState() => _UserGuideScreenState();
+}
+
+class _UserGuideScreenState extends ConsumerState<UserGuideScreen> {
+  late final PageController _controller;
+  int _index = 0;
+
+  final List<_GuideStep> _steps = const [
+    _GuideStep(
+      title: 'Bienvenue sur Cousinade 2.0',
+      description:
+          'Ce guide t\'explique l\'application simplement. '
+          'Prends 2 minutes et tu seras a l\'aise.',
+      icon: Icons.family_restroom_rounded,
+    ),
+    _GuideStep(
+      title: 'Se connecter',
+      description:
+          'Entre ton email et ton mot de passe. '
+          'Si besoin, utilise "Mot de passe oublie ?".',
+      icon: Icons.login_rounded,
+    ),
+    _GuideStep(
+      title: 'Entrer dans ta famille',
+      description:
+          'Si c\'est la premiere fois, cree ta famille ou rejoins-la '
+          'avec le code invitation.',
+      icon: Icons.groups_2_rounded,
+    ),
+    _GuideStep(
+      title: 'Utiliser les 5 onglets',
+      description:
+          'Accueil, Famille, Publier, Evenements et Profil '
+          'sont en bas de l\'ecran.',
+      icon: Icons.space_dashboard_rounded,
+    ),
+    _GuideStep(
+      title: 'Publier un message',
+      description:
+          'Ouvre "Publier", ecris ton message, '
+          'ajoute une photo ou une video puis appuie sur Publier.',
+      icon: Icons.edit_note_rounded,
+    ),
+    _GuideStep(
+      title: 'Lire et reagir',
+      description:
+          'Dans Accueil, ouvre une publication pour lire, '
+          'commenter et liker.',
+      icon: Icons.favorite_border_rounded,
+    ),
+    _GuideStep(
+      title: 'Discuter en prive',
+      description:
+          'Va dans Famille puis appuie sur la bulle de discussion '
+          'a cote d\'un membre.',
+      icon: Icons.chat_bubble_outline_rounded,
+    ),
+    _GuideStep(
+      title: 'Creer un evenement',
+      description:
+          'Dans Evenements, appuie sur "Nouvel evenement", '
+          'puis renseigne date, lieu et description.',
+      icon: Icons.event_note_rounded,
+    ),
+    _GuideStep(
+      title: 'Petits conseils utiles',
+      description:
+          'Appuie une seule fois puis attends 1 a 2 secondes. '
+          'Si internet est lent, tire vers le bas pour actualiser. '
+          'En cas de doute, va dans Profil > Parametres.',
+      icon: Icons.tips_and_updates_outlined,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _finishGuide() async {
+    await ref.read(userGuideProvider.notifier).markGuideSeen();
+    if (!mounted) return;
+
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final authUser = ref.read(currentFirebaseUserProvider);
+    context.go(authUser == null ? AppRoutes.login : AppRoutes.home);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLast = _index == _steps.length - 1;
     return Scaffold(
       appBar: AppBar(title: const Text('Mode d\'emploi')),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: const [
-          _GuideIntroCard(),
-          _GuideStepCard(
-            number: 1,
-            title: 'Se connecter',
-            description:
-                'Entre ton email et ton mot de passe. Si besoin, utilise "Mot de passe oublie ?".',
-            icon: Icons.login_rounded,
-          ),
-          _GuideStepCard(
-            number: 2,
-            title: 'Entrer dans ta famille',
-            description:
-                'Si c\'est la premiere fois, cree ta famille ou rejoins-la avec le code invitation.',
-            icon: Icons.groups_2_rounded,
-          ),
-          _GuideStepCard(
-            number: 3,
-            title: 'Utiliser les 5 onglets',
-            description:
-                'Accueil, Famille, Publier, Evenements et Profil sont en bas de l\'ecran.',
-            icon: Icons.space_dashboard_rounded,
-          ),
-          _GuideFeatureCard(
-            title: 'Publier un message',
-            description:
-                'Ouvre "Publier", ecris ton message, ajoute une photo ou une video puis appuie sur Publier.',
-            icon: Icons.edit_note_rounded,
-          ),
-          _GuideFeatureCard(
-            title: 'Lire et reagir',
-            description:
-                'Dans Accueil, ouvre une publication pour voir les details, commenter et liker.',
-            icon: Icons.favorite_border_rounded,
-          ),
-          _GuideFeatureCard(
-            title: 'Discuter en prive',
-            description:
-                'Va dans Famille puis appuie sur la bulle de discussion a cote d\'un membre.',
-            icon: Icons.chat_bubble_outline_rounded,
-          ),
-          _GuideFeatureCard(
-            title: 'Creer un evenement',
-            description:
-                'Dans Evenements, appuie sur "Nouvel evenement", puis renseigne date, lieu et description.',
-            icon: Icons.event_note_rounded,
-          ),
-          _GuideTipsCard(),
-          _GuideFaqCard(),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: ElevatedButton.icon(
-          onPressed: () async {
-            await ref.read(userGuideProvider.notifier).markGuideSeen();
-            if (!context.mounted) return;
-
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-              return;
-            }
-
-            final authUser = ref.read(currentFirebaseUserProvider);
-            context.go(authUser == null ? AppRoutes.login : AppRoutes.home);
-          },
-          icon: const Icon(Icons.check_circle_outline),
-          label: const Text('J\'ai compris'),
-        ),
-      ),
-    );
-  }
-}
-
-class _GuideIntroCard extends StatelessWidget {
-  const _GuideIntroCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.family_restroom_rounded,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bienvenue sur Cousinade 2.0',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Ce guide t\'explique l\'application simplement. '
-                  'Prends 2 minutes et tu seras a l\'aise.',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuideStepCard extends StatelessWidget {
-  const _GuideStepCard({
-    required this.number,
-    required this.title,
-    required this.description,
-    required this.icon,
-  });
-
-  final int number;
-  final String title;
-  final String description;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            child: Text(
-              '$number',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 18),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: _steps.length,
+              onPageChanged: (value) => setState(() => _index = value),
+              itemBuilder: (context, index) {
+                final step = _steps[index];
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: AppCard(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            step.icon,
+                            size: 34,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          step.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          step.description,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                );
+              },
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              _steps.length,
+              (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _index == i ? 20 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _index == i
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 6),
-                Text(description),
+              ),
+            ),
+          ),
+          SafeArea(
+            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: [
+                if (_index > 0)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _controller.previousPage(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      child: const Text('Retour'),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: TextButton(
+                      onPressed: _finishGuide,
+                      child: const Text('Passer'),
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      if (isLast) {
+                        await _finishGuide();
+                        return;
+                      }
+                      _controller.nextPage(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                      );
+                    },
+                    icon: Icon(
+                      isLast ? Icons.check_circle_outline : Icons.arrow_forward,
+                    ),
+                    label: Text(isLast ? 'J\'ai compris' : 'Suivant'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -193,8 +236,8 @@ class _GuideStepCard extends StatelessWidget {
   }
 }
 
-class _GuideFeatureCard extends StatelessWidget {
-  const _GuideFeatureCard({
+class _GuideStep {
+  const _GuideStep({
     required this.title,
     required this.description,
     required this.icon,
@@ -203,120 +246,4 @@ class _GuideFeatureCard extends StatelessWidget {
   final String title;
   final String description;
   final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Text(description),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuideTipsCard extends StatelessWidget {
-  const _GuideTipsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Row(
-            children: [
-              Icon(Icons.tips_and_updates_outlined),
-              SizedBox(width: 8),
-              Text(
-                'Petits conseils utiles',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-              ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text('• Appuie une seule fois puis attends 1 a 2 secondes.'),
-          SizedBox(height: 4),
-          Text('• Si internet est lent, tire vers le bas pour actualiser.'),
-          SizedBox(height: 4),
-          Text('• En cas de doute, retourne dans Profil > Parametres.'),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuideFaqCard extends StatelessWidget {
-  const _GuideFaqCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Questions frequentes',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-          ),
-          const SizedBox(height: 8),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: const Text('Je me suis trompe de bouton, que faire ?'),
-            children: const [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Pas grave. Reviens en arriere avec la fleche en haut a gauche ou le bouton retour du telephone.',
-                ),
-              ),
-            ],
-          ),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: const Text('Je ne vois pas les nouvelles publications'),
-            children: const [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Va dans Accueil et tire la liste vers le bas pour rafraichir.',
-                ),
-              ),
-            ],
-          ),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: const Text('J\'ai oublie mon mot de passe'),
-            children: const [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Dans l\'ecran Connexion, appuie sur "Mot de passe oublie ?" puis suis les instructions.',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

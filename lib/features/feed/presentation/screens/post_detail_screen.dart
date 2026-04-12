@@ -136,15 +136,59 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     ).showSnackBar(const SnackBar(content: Text('Publication supprimee')));
   }
 
+  Future<void> _removeMedia(PostModel post, String mediaType) async {
+    final label = mediaType == 'image' ? 'photo' : 'video';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Supprimer la $label'),
+          content: const Text('Le media sera supprime de la publication.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    final error = await ref
+        .read(feedControllerProvider.notifier)
+        .removePostMedia(post: post, mediaType: mediaType);
+    if (!mounted) return;
+
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Media supprime')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final postAsync = ref.watch(postDetailProvider(widget.postId));
     final commentsAsync = ref.watch(postCommentsProvider(widget.postId));
     final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
     final post = postAsync.valueOrNull;
-    final canManage = post != null && currentUser?.id == post.authorId;
+    final isOwner = post != null && currentUser?.id == post.authorId;
+    final isAdmin = currentUser?.role == 'admin';
+    final canManage = post != null && (isOwner || isAdmin);
     final managedPost = canManage ? post : null;
     final hasVideo = (post?.videoUrl ?? '').isNotEmpty;
+    final hasImage = (post?.imageUrl ?? '').isNotEmpty;
     final topSectionFlex = hasVideo ? 7 : 4;
     final commentsSectionFlex = hasVideo ? 3 : 5;
 
@@ -156,14 +200,34 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             PopupMenuButton<String>(
               onSelected: (value) async {
                 if (value == 'edit') {
-                  await _editPost(managedPost);
+                  if (isOwner) {
+                    await _editPost(managedPost);
+                  }
+                } else if (value == 'remove_image') {
+                  await _removeMedia(managedPost, 'image');
+                } else if (value == 'remove_video') {
+                  await _removeMedia(managedPost, 'video');
                 } else if (value == 'delete') {
                   await _deletePost(managedPost);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem<String>(value: 'edit', child: Text('Modifier')),
-                PopupMenuItem<String>(
+              itemBuilder: (context) => [
+                if (isOwner)
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Text('Modifier'),
+                  ),
+                if (hasImage)
+                  const PopupMenuItem<String>(
+                    value: 'remove_image',
+                    child: Text('Supprimer la photo'),
+                  ),
+                if (hasVideo)
+                  const PopupMenuItem<String>(
+                    value: 'remove_video',
+                    child: Text('Supprimer la video'),
+                  ),
+                const PopupMenuItem<String>(
                   value: 'delete',
                   child: Text('Supprimer'),
                 ),

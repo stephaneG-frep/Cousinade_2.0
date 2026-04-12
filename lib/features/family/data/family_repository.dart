@@ -114,4 +114,96 @@ class FamilyRepository {
               .toList(),
         );
   }
+
+  Future<void> removeMember({
+    required String familyId,
+    required String memberId,
+  }) async {
+    final familyRef = _firestore
+        .collection(FirestorePaths.families)
+        .doc(familyId);
+    final userRef = _firestore.collection(FirestorePaths.users).doc(memberId);
+
+    final batch = _firestore.batch();
+    batch.update(familyRef, {'membersCount': FieldValue.increment(-1)});
+    batch.set(userRef, {
+      'familyId': null,
+      'role': 'member',
+    }, SetOptions(merge: true));
+    await batch.commit();
+  }
+
+  Future<void> updateMemberRole({
+    required String memberId,
+    required String role,
+  }) async {
+    final userRef = _firestore.collection(FirestorePaths.users).doc(memberId);
+    await userRef.set({'role': role}, SetOptions(merge: true));
+  }
+
+  Future<String> autoJoinDefaultFamily({
+    required UserModel user,
+    String? defaultFamilyName,
+  }) async {
+    if (user.hasFamily) return user.familyId!;
+
+    final familyQuery = await _firestore
+        .collection(FirestorePaths.families)
+        .limit(1)
+        .get();
+
+    if (familyQuery.docs.isEmpty) {
+      final familyRef = _firestore.collection(FirestorePaths.families).doc();
+      final code = _generateInviteCode();
+      final family = FamilyModel(
+        id: familyRef.id,
+        name: (defaultFamilyName ?? 'Famille Cousinade').trim(),
+        inviteCode: code,
+        createdBy: user.id,
+        createdAt: DateTime.now(),
+        membersCount: 1,
+      );
+
+      final batch = _firestore.batch();
+      batch.set(familyRef, family.toMap());
+      batch.set(
+        _firestore.collection(FirestorePaths.users).doc(user.id),
+        {
+          'id': user.id,
+          'email': user.email,
+          'firstName': user.firstName,
+          'lastName': user.lastName,
+          'displayName': user.displayName,
+          'createdAt': FieldValue.serverTimestamp(),
+          'familyId': familyRef.id,
+          'role': 'admin',
+        },
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+      return familyRef.id;
+    }
+
+    final familyDoc = familyQuery.docs.first;
+    final batch = _firestore.batch();
+    batch.update(familyDoc.reference, {
+      'membersCount': FieldValue.increment(1),
+    });
+    batch.set(
+      _firestore.collection(FirestorePaths.users).doc(user.id),
+      {
+        'id': user.id,
+        'email': user.email,
+        'firstName': user.firstName,
+        'lastName': user.lastName,
+        'displayName': user.displayName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'familyId': familyDoc.id,
+        'role': 'member',
+      },
+      SetOptions(merge: true),
+    );
+    await batch.commit();
+    return familyDoc.id;
+  }
 }

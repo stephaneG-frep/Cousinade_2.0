@@ -5,10 +5,16 @@ import '../models/event_model.dart';
 import 'app_card.dart';
 
 class EventCard extends StatelessWidget {
-  const EventCard({super.key, required this.event, this.onTap});
+  const EventCard({
+    super.key,
+    required this.event,
+    this.onTap,
+    this.isNew = false,
+  });
 
   final EventModel event;
   final VoidCallback? onTap;
+  final bool isNew;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +23,35 @@ class EventCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(event.title, style: Theme.of(context).textTheme.titleSmall),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  event.title,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              if (isNew)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Nouveau',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(event.description, maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),

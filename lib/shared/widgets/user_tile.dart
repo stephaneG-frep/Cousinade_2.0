@@ -12,11 +12,37 @@ class UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = user.isOnlineNow;
     return ListTile(
       onTap: onTap,
-      leading: AppAvatar(initial: user.displayName, imageUrl: user.avatarUrl),
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AppAvatar(initial: user.displayName, imageUrl: user.avatarUrl),
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: isOnline ? Colors.greenAccent.shade400 : Colors.grey,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       title: Text(user.displayName),
-      subtitle: Text(user.role == 'admin' ? 'Administrateur' : 'Membre'),
+      subtitle: Text(
+        isOnline
+            ? 'En ligne'
+            : (user.role == 'admin' ? 'Administrateur' : 'Membre'),
+      ),
       trailing: trailing,
     );
   }
