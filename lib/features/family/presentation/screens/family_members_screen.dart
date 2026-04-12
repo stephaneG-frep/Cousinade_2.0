@@ -132,7 +132,45 @@ class _FamilyMembersScreenState extends ConsumerState<FamilyMembersScreen> {
                 if (index == 1) {
                   final family = familyAsync.valueOrNull;
                   if (family == null) {
-                    return const SizedBox.shrink();
+                    return AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Famille introuvable',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'On va recreer la famille principale.',
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              final error = await ref
+                                  .read(
+                                    familyControllerProvider.notifier,
+                                  )
+                                  .autoJoinDefaultFamily();
+                              if (!context.mounted) return;
+                              if (error != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error)),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Famille recreee'),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Recreer la famille'),
+                          ),
+                        ],
+                      ),
+                    );
                   }
                   return AppCard(
                     child: Column(

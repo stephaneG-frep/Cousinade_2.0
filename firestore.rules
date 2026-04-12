@@ -19,7 +19,10 @@ service cloud.firestore {
     }
 
     function sameFamily(familyId) {
-      return isSignedIn() && userFamilyId() != null && userFamilyId() == familyId;
+      return isSignedIn() &&
+        userFamilyId() != null &&
+        userFamilyId() == familyId &&
+        familyId == 'primary';
     }
 
     function postFamilyId(postId) {
@@ -48,12 +51,17 @@ service cloud.firestore {
     }
 
     match /families/{familyId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
-      allow update: if sameFamily(familyId) || (
-        isSignedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membersCount'])
+      allow read: if isSignedIn() && familyId == 'primary';
+      allow create: if isSignedIn() &&
+        familyId == 'primary' &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if familyId == 'primary' && (
+        sameFamily(familyId) || (
+          isSignedIn() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membersCount', 'createdBy', 'inviteCode', 'name'])
+        )
       );
+      allow delete: if false;
     }
 
     match /posts/{postId} {

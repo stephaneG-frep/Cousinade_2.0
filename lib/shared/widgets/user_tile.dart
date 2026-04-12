@@ -37,7 +37,9 @@ class UserTile extends StatelessWidget {
           ),
         ],
       ),
-      title: Text(user.displayName),
+      title: Text(
+        user.displayName.trim().isEmpty ? user.email : user.displayName,
+      ),
       subtitle: Text(
         isOnline
             ? 'En ligne'

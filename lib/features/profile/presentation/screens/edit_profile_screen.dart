@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -25,6 +26,56 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   File? _avatar;
   bool _initialized = false;
+  static const _draftAvatarKey = 'draft_profile_avatar_path';
+
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostAvatar();
+    _restoreDraftAvatar();
+  }
+
+  Future<void> _recoverLostAvatar() async {
+    final response = await _picker.retrieveLostData();
+    if (response.isEmpty) return;
+    if (!mounted) return;
+
+    final file = response.file;
+    if (file == null) {
+      if (response.exception != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de recuperer la photo.')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _avatar = File(file.path);
+    });
+    await _persistDraftAvatar();
+  }
+
+  Future<void> _restoreDraftAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString(_draftAvatarKey);
+    if (path == null || path.isEmpty) return;
+    final file = File(path);
+    if (!await file.exists()) return;
+    if (!mounted) return;
+    setState(() {
+      _avatar = file;
+    });
+  }
+
+  Future<void> _persistDraftAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_avatar != null) {
+      await prefs.setString(_draftAvatarKey, _avatar!.path);
+    } else {
+      await prefs.remove(_draftAvatarKey);
+    }
+  }
 
   @override
   void dispose() {
@@ -35,20 +86,42 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 75,
-    );
+    XFile? image;
+    String? errorMsg;
+    try {
+      image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 75,
+      );
+    } catch (e) {
+      errorMsg = e.toString();
+    }
+
+    if (errorMsg != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Photo : $errorMsg')),
+      );
+      return;
+    }
+
     if (image == null) return;
 
+    if (!mounted) return;
     setState(() {
-      _avatar = File(image.path);
+      _avatar = File(image!.path);
     });
+    await _persistDraftAvatar();
   }
 
   Future<void> _save() async {
     if (ref.read(profileControllerProvider).isLoading) return;
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remplis ton prenom et ton nom.')),
+      );
+      return;
+    }
 
     final error = await ref
         .read(profileControllerProvider.notifier)
@@ -68,6 +141,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
 
+    await _persistDraftAvatar();
+
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Profil mis a jour')));

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/models/event_model.dart';
@@ -14,7 +16,14 @@ final familyEventsProvider = StreamProvider<List<EventModel>>((ref) {
   final authUser = ref.watch(currentFirebaseUserProvider);
   if (authUser == null) return Stream.value([]);
 
-  final user = ref.watch(currentUserProfileProvider).valueOrNull;
+  final userAsync = ref.watch(currentUserProfileProvider);
+  if (userAsync.isLoading) {
+    final controller = StreamController<List<EventModel>>();
+    ref.onDispose(controller.close);
+    return controller.stream;
+  }
+
+  final user = userAsync.valueOrNull;
   if (user == null || !user.hasFamily) return Stream.value([]);
   return ref.watch(eventsRepositoryProvider).watchFamilyEvents(user.familyId!);
 });
@@ -48,7 +57,6 @@ class EventsController extends AsyncNotifier<void> {
     }
 
     user = await authRepository.ensureUserProfileForAuthUser(firebaseUser);
-    ref.invalidate(currentUserProfileProvider);
     return user;
   }
 

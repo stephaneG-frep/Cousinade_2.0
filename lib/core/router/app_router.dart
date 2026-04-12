@@ -29,7 +29,6 @@ import 'main_shell_scaffold.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authAsync = ref.watch(authStateChangesProvider);
-  final profileAsync = ref.watch(currentUserProfileProvider);
   final guideState = ref.watch(userGuideProvider);
   final splashDelay = ref.watch(startupSplashDelayProvider);
 
@@ -43,7 +42,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           location == AppRoutes.register ||
           location == AppRoutes.forgotPassword;
       final isUserGuide = location == AppRoutes.userGuide;
-      final isFamilySetup = location == AppRoutes.createOrJoinFamily;
       final isSplashLoading = splashDelay.isLoading;
 
       if (isSplashLoading) {
@@ -61,21 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
 
-      if (profileAsync.isLoading || profileAsync.hasError) {
-        if (isSplash) return AppRoutes.home;
-        return null;
-      }
-
-      final profile = profileAsync.valueOrNull;
-      if (profile == null) {
-        return isFamilySetup ? null : AppRoutes.createOrJoinFamily;
-      }
-
-      if (!profile.hasFamily) {
-        return isFamilySetup ? null : AppRoutes.createOrJoinFamily;
-      }
-
-      if (isSplash || isAuthRoute || isFamilySetup) {
+      if (isSplash || isAuthRoute) {
         return AppRoutes.home;
       }
 

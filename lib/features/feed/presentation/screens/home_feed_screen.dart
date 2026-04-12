@@ -24,6 +24,7 @@ class HomeFeedScreen extends ConsumerStatefulWidget {
 
 class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
   DateTime? _lastSeen;
+  List<PostModel> _cachedPosts = const [];
 
   @override
   void initState() {
@@ -101,6 +102,7 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
       ),
       body: postsAsync.when(
         data: (posts) {
+          _cachedPosts = posts;
           if (posts.isEmpty) {
             return const EmptyStateWidget(
               title: 'Aucune publication',
@@ -142,11 +144,87 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
             ),
           );
         },
-        error: (error, _) => ErrorStateWidget(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(familyPostsProvider),
-        ),
-        loading: () => const LoadingWidget(message: 'Chargement du fil...'),
+        error: (error, _) {
+          if (_cachedPosts.isNotEmpty) {
+            final posts = _cachedPosts;
+            return RefreshIndicator(
+              onRefresh: () async => ref.refresh(familyPostsProvider.future),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: posts.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const OneTimeTipCard(
+                      storageKey: 'tip_home_feed',
+                      title: 'Fil de famille',
+                      message:
+                          'Ici tu vois toutes les nouvelles publications. '
+                          'Appuie sur une publication pour lire et commenter.',
+                      icon: Icons.dynamic_feed_outlined,
+                    );
+                  }
+
+                  final post = posts[index - 1];
+                  final isNew = _lastSeen != null &&
+                      post.createdAt.isAfter(_lastSeen!);
+                  return PostCard(
+                    post: post,
+                    isNew: isNew,
+                    onTap: () =>
+                        context.push(AppRoutes.postDetailPath(post.id)),
+                    onLike: () => ref
+                        .read(feedControllerProvider.notifier)
+                        .toggleLike(post),
+                    headerTrailing: _buildPostMenu(context, post, currentUser),
+                  );
+                },
+              ),
+            );
+          }
+          return ErrorStateWidget(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(familyPostsProvider),
+          );
+        },
+        loading: () {
+          if (_cachedPosts.isNotEmpty) {
+            final posts = _cachedPosts;
+            return RefreshIndicator(
+              onRefresh: () async => ref.refresh(familyPostsProvider.future),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: posts.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const OneTimeTipCard(
+                      storageKey: 'tip_home_feed',
+                      title: 'Fil de famille',
+                      message:
+                          'Ici tu vois toutes les nouvelles publications. '
+                          'Appuie sur une publication pour lire et commenter.',
+                      icon: Icons.dynamic_feed_outlined,
+                    );
+                  }
+
+                  final post = posts[index - 1];
+                  final isNew = _lastSeen != null &&
+                      post.createdAt.isAfter(_lastSeen!);
+                  return PostCard(
+                    post: post,
+                    isNew: isNew,
+                    onTap: () =>
+                        context.push(AppRoutes.postDetailPath(post.id)),
+                    onLike: () => ref
+                        .read(feedControllerProvider.notifier)
+                        .toggleLike(post),
+                    headerTrailing: _buildPostMenu(context, post, currentUser),
+                  );
+                },
+              ),
+            );
+          }
+          return const LoadingWidget(message: 'Chargement du fil...');
+        },
       ),
     );
   }

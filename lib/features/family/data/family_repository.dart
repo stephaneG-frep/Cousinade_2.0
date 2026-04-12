@@ -10,6 +10,17 @@ class FamilyRepository {
   FamilyRepository(this._firestore);
 
   final FirebaseFirestore _firestore;
+  static const String _primaryFamilyId = 'primary';
+
+  Future<int> _countAdmins() async {
+    final snapshot = await _firestore
+        .collection(FirestorePaths.users)
+        .where('familyId', isEqualTo: _primaryFamilyId)
+        .where('role', isEqualTo: 'admin')
+        .limit(1)
+        .get();
+    return snapshot.docs.length;
+  }
 
   String _generateInviteCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -109,9 +120,11 @@ class FamilyRepository {
         .where('familyId', isEqualTo: familyId)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => UserModel.fromMap(doc.data()))
-              .toList(),
+          (snapshot) => snapshot.docs.map((doc) {
+            final data = Map<String, dynamic>.from(doc.data());
+            if ((data['id'] as String? ?? '').isEmpty) data['id'] = doc.id;
+            return UserModel.fromMap(data);
+          }).toList(),
         );
   }
 
@@ -145,18 +158,15 @@ class FamilyRepository {
     required UserModel user,
     String? defaultFamilyName,
   }) async {
-    if (user.hasFamily) return user.familyId!;
-
-    final familyQuery = await _firestore
+    final familyRef = _firestore
         .collection(FirestorePaths.families)
-        .limit(1)
-        .get();
+        .doc(_primaryFamilyId);
+    final familyDoc = await familyRef.get();
 
-    if (familyQuery.docs.isEmpty) {
-      final familyRef = _firestore.collection(FirestorePaths.families).doc();
+    if (!familyDoc.exists) {
       final code = _generateInviteCode();
       final family = FamilyModel(
-        id: familyRef.id,
+        id: _primaryFamilyId,
         name: (defaultFamilyName ?? 'Famille Cousinade').trim(),
         inviteCode: code,
         createdBy: user.id,
@@ -175,20 +185,33 @@ class FamilyRepository {
           'lastName': user.lastName,
           'displayName': user.displayName,
           'createdAt': FieldValue.serverTimestamp(),
-          'familyId': familyRef.id,
+          'familyId': _primaryFamilyId,
           'role': 'admin',
         },
         SetOptions(merge: true),
       );
       await batch.commit();
-      return familyRef.id;
+      return _primaryFamilyId;
     }
 
-    final familyDoc = familyQuery.docs.first;
+    final familyData = familyDoc.data() ?? {};
+    final createdBy = (familyData['createdBy'] ?? '') as String;
+    var role = createdBy == user.id ? 'admin' : 'member';
+
+    if (role != 'admin') {
+      final admins = await _countAdmins();
+      if (admins == 0) {
+        role = 'admin';
+        await familyRef.set({'createdBy': user.id}, SetOptions(merge: true));
+      }
+    }
+
     final batch = _firestore.batch();
-    batch.update(familyDoc.reference, {
-      'membersCount': FieldValue.increment(1),
-    });
+    if (user.familyId != _primaryFamilyId) {
+      batch.update(familyRef, {
+        'membersCount': FieldValue.increment(1),
+      });
+    }
     batch.set(
       _firestore.collection(FirestorePaths.users).doc(user.id),
       {
@@ -198,12 +221,12 @@ class FamilyRepository {
         'lastName': user.lastName,
         'displayName': user.displayName,
         'createdAt': FieldValue.serverTimestamp(),
-        'familyId': familyDoc.id,
-        'role': 'member',
+        'familyId': _primaryFamilyId,
+        'role': role,
       },
       SetOptions(merge: true),
     );
     await batch.commit();
-    return familyDoc.id;
+    return _primaryFamilyId;
   }
 }

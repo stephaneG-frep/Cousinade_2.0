@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../family/presentation/providers/family_providers.dart';
 import '../providers/feed_providers.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
@@ -24,6 +27,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _picker = ImagePicker();
   File? _selectedImage;
   File? _selectedVideo;
+
+  static const _draftImageKey = 'draft_post_image_path';
+  static const _draftVideoKey = 'draft_post_video_path';
+  static const _returnToPublishKey = 'return_to_publish';
 
   bool get _canPublish =>
       _selectedImage != null ||
@@ -43,30 +50,153 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 75,
-    );
-    if (image == null) return;
+  @override
+  void initState() {
+    super.initState();
+    _recoverLostMedia();
+    _restoreDraftMedia();
+  }
+
+  Future<void> _recoverLostMedia() async {
+    final response = await _picker.retrieveLostData();
+    if (response.isEmpty) return;
+    if (!mounted) return;
+
+    final file = response.file;
+    if (file == null) {
+      if (response.exception != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de recuperer le media.')),
+        );
+      }
+      return;
+    }
 
     setState(() {
-      _selectedImage = File(image.path);
+      if (response.type == RetrieveType.video) {
+        _selectedVideo = File(file.path);
+        _selectedImage = null;
+      } else {
+        _selectedImage = File(file.path);
+        _selectedVideo = null;
+      }
+    });
+    await _persistDraftMedia();
+  }
+
+  Future<void> _restoreDraftMedia() async {
+    final prefs = await SharedPreferences.getInstance();
+    final imagePath = prefs.getString(_draftImageKey);
+    final videoPath = prefs.getString(_draftVideoKey);
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      final file = File(imagePath);
+      if (await file.exists()) {
+        if (!mounted) return;
+        setState(() {
+          _selectedImage = file;
+          _selectedVideo = null;
+        });
+        return;
+      }
+    }
+
+    if (videoPath != null && videoPath.isNotEmpty) {
+      final file = File(videoPath);
+      if (await file.exists()) {
+        if (!mounted) return;
+        setState(() {
+          _selectedVideo = file;
+          _selectedImage = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _persistDraftMedia() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_selectedImage != null) {
+      await prefs.setString(_draftImageKey, _selectedImage!.path);
+      await prefs.remove(_draftVideoKey);
+    } else if (_selectedVideo != null) {
+      await prefs.setString(_draftVideoKey, _selectedVideo!.path);
+      await prefs.remove(_draftImageKey);
+    } else {
+      await prefs.remove(_draftImageKey);
+      await prefs.remove(_draftVideoKey);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_returnToPublishKey, true);
+
+    XFile? image;
+    String? errorMsg;
+    try {
+      image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 75,
+      );
+    } catch (e) {
+      errorMsg = e.toString();
+    }
+
+    await prefs.remove(_returnToPublishKey);
+
+    if (errorMsg != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Photo : $errorMsg')),
+      );
+      return;
+    }
+
+    // image == null means the user cancelled — nothing to do.
+    if (image == null) return;
+
+    if (!mounted) return;
+    setState(() {
+      _selectedImage = File(image!.path);
       _selectedVideo = null;
     });
+    await _persistDraftMedia();
   }
 
   Future<void> _pickVideo() async {
-    final video = await _picker.pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: const Duration(minutes: 3),
-    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_returnToPublishKey, true);
+
+    XFile? video;
+    String? errorMsg;
+    try {
+      video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 3),
+      );
+    } catch (e) {
+      errorMsg = e.toString();
+    }
+
+    await prefs.remove(_returnToPublishKey);
+
+    if (errorMsg != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Video : $errorMsg')),
+      );
+      return;
+    }
+
+    // video == null means the user cancelled — nothing to do.
     if (video == null) return;
 
+    if (!mounted) return;
     setState(() {
-      _selectedVideo = File(video.path);
+      _selectedVideo = File(video!.path);
       _selectedImage = null;
     });
+    await _persistDraftMedia();
   }
 
   Future<void> _publish() async {
@@ -92,6 +222,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       _selectedImage = null;
       _selectedVideo = null;
     });
+    await _persistDraftMedia();
+    if (!mounted) return;
     context.go(AppRoutes.home);
   }
 
@@ -99,6 +231,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   Widget build(BuildContext context) {
     final feedState = ref.watch(feedControllerProvider);
     final uploadProgress = ref.watch(postUploadProgressProvider);
+    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
+    final hasFamily = currentUser?.hasFamily == true;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Publier')),
@@ -112,6 +246,44 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 'Ecris un message et ajoute une photo ou une video si tu veux.',
             icon: Icons.edit_note_outlined,
           ),
+          if (!hasFamily)
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Connexion famille requise',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Impossible de publier tant que ta famille n\'est pas connectee.',
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final error = await ref
+                          .read(familyControllerProvider.notifier)
+                          .autoJoinDefaultFamily();
+                      if (!context.mounted) return;
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error)),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Famille connectee'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.groups_2_outlined),
+                    label: const Text('Reconnecter ma famille'),
+                  ),
+                ],
+              ),
+            ),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -223,10 +395,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: feedState.isLoading || !_canPublish
-                            ? null
-                            : _publish,
+                  child: ElevatedButton.icon(
+                    onPressed: feedState.isLoading || !_canPublish
+                        ? null
+                        : _publish,
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           shape: const StadiumBorder(),

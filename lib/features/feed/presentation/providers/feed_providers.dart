@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +22,17 @@ final familyPostsProvider = StreamProvider<List<PostModel>>((ref) {
   final authUser = ref.watch(currentFirebaseUserProvider);
   if (authUser == null) return Stream.value([]);
 
-  final user = ref.watch(currentUserProfileProvider).valueOrNull;
+  final userAsync = ref.watch(currentUserProfileProvider);
+  // While the profile is reloading, return a pending stream so the provider
+  // stays in loading state instead of briefly emitting an empty list, which
+  // would cause a visible flicker between "loading" and "aucune publication".
+  if (userAsync.isLoading) {
+    final controller = StreamController<List<PostModel>>();
+    ref.onDispose(controller.close);
+    return controller.stream;
+  }
+
+  final user = userAsync.valueOrNull;
   if (user == null || !user.hasFamily) return Stream.value([]);
   return ref.watch(feedRepositoryProvider).watchFamilyPosts(user.familyId!);
 });
@@ -66,7 +77,6 @@ class FeedController extends AsyncNotifier<void> {
     }
 
     user = await authRepository.ensureUserProfileForAuthUser(firebaseUser);
-    ref.invalidate(currentUserProfileProvider);
     return user;
   }
 

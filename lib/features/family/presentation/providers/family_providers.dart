@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/models/family_model.dart';
@@ -12,27 +14,33 @@ final familyRepositoryProvider = Provider<FamilyRepository>((ref) {
 
 final currentFamilyProvider = StreamProvider<FamilyModel?>((ref) {
   final authUser = ref.watch(currentFirebaseUserProvider);
-  if (authUser == null) {
-    return Stream.value(null);
+  if (authUser == null) return Stream.value(null);
+
+  final userAsync = ref.watch(currentUserProfileProvider);
+  if (userAsync.isLoading) {
+    final controller = StreamController<FamilyModel?>();
+    ref.onDispose(controller.close);
+    return controller.stream;
   }
 
-  final user = ref.watch(currentUserProfileProvider).valueOrNull;
-  if (user == null || !user.hasFamily) {
-    return Stream.value(null);
-  }
+  final user = userAsync.valueOrNull;
+  if (user == null || !user.hasFamily) return Stream.value(null);
   return ref.watch(familyRepositoryProvider).watchFamily(user.familyId!);
 });
 
 final familyMembersProvider = StreamProvider<List<UserModel>>((ref) {
   final authUser = ref.watch(currentFirebaseUserProvider);
-  if (authUser == null) {
-    return Stream.value([]);
+  if (authUser == null) return Stream.value([]);
+
+  final userAsync = ref.watch(currentUserProfileProvider);
+  if (userAsync.isLoading) {
+    final controller = StreamController<List<UserModel>>();
+    ref.onDispose(controller.close);
+    return controller.stream;
   }
 
-  final user = ref.watch(currentUserProfileProvider).valueOrNull;
-  if (user == null || !user.hasFamily) {
-    return Stream.value([]);
-  }
+  final user = userAsync.valueOrNull;
+  if (user == null || !user.hasFamily) return Stream.value([]);
   return ref.watch(familyRepositoryProvider).watchFamilyMembers(user.familyId!);
 });
 
@@ -56,7 +64,6 @@ class FamilyController extends AsyncNotifier<void> {
     }
 
     user = await authRepository.ensureUserProfileForAuthUser(firebaseUser);
-    ref.invalidate(currentUserProfileProvider);
     return user;
   }
 
@@ -97,8 +104,8 @@ class FamilyController extends AsyncNotifier<void> {
       await ref
           .read(familyRepositoryProvider)
           .autoJoinDefaultFamily(user: user);
-      ref.invalidate(currentUserProfileProvider);
-      ref.invalidate(currentFamilyProvider);
+      // No invalidate needed — both currentUserProfileProvider and
+      // currentFamilyProvider are Firestore streams and auto-update.
       state = const AsyncData(null);
       return null;
     } catch (e, st) {
