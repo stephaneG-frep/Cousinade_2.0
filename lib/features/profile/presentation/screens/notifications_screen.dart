@@ -5,6 +5,7 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../providers/profile_providers.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -15,7 +16,10 @@ class NotificationsScreen extends ConsumerWidget {
     final notificationsAsync = ref.watch(notificationsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        actions: const [HelpAction()],
+      ),
       body: notificationsAsync.when(
         data: (notifications) {
           if (notifications.isEmpty) {

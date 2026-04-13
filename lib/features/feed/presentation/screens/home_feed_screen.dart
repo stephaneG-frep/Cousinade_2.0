@@ -11,6 +11,7 @@ import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
 import '../../../../shared/widgets/post_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../providers/feed_providers.dart';
@@ -53,6 +54,7 @@ class _HomeFeedScreenState extends ConsumerState<HomeFeedScreen> {
       appBar: AppBar(
         title: const Text('Accueil'),
         actions: [
+          const HelpAction(),
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
             icon: const Icon(Icons.notifications_none),

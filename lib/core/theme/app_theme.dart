@@ -25,13 +25,13 @@ class AppTheme {
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.cream,
+      scaffoldBackgroundColor: AppColors.warmSand,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.orange,
         brightness: Brightness.light,
         primary: AppColors.orange,
         secondary: AppColors.coral,
-        surface: AppColors.white,
+        surface: AppColors.warmCard,
       ),
       textTheme: _buildTextTheme(
         primaryText: AppColors.darkText,
@@ -40,19 +40,19 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-        backgroundColor: AppColors.cream,
+        backgroundColor: AppColors.warmSand,
         foregroundColor: AppColors.darkText,
         titleTextStyle: AppTextStyles.titleMedium,
       ),
       cardTheme: CardThemeData(
-        color: AppColors.white,
-        elevation: 1,
+        color: AppColors.warmCard,
+        elevation: 2,
         shadowColor: AppColors.lightShadow,
         shape: RoundedRectangleBorder(borderRadius: AppBorderRadius.lg),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: AppColors.warmCard,
         border: OutlineInputBorder(
           borderRadius: AppBorderRadius.md,
           borderSide: const BorderSide(color: AppColors.border),
@@ -79,7 +79,7 @@ class AppTheme {
         showUnselectedLabels: true,
         selectedItemColor: AppColors.orange,
         unselectedItemColor: AppColors.mutedText,
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.warmCard,
       ),
       dividerColor: AppColors.border,
     );
@@ -118,7 +118,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
-        elevation: 2,
+        elevation: 3,
         shadowColor: AppColors.darkShadow,
         shape: RoundedRectangleBorder(
           borderRadius: AppBorderRadius.lg,

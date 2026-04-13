@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../providers/events_providers.dart';
 
 class EventDetailScreen extends ConsumerWidget {
@@ -16,7 +17,10 @@ class EventDetailScreen extends ConsumerWidget {
     final eventAsync = ref.watch(eventDetailProvider(eventId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail evenement')),
+      appBar: AppBar(
+        title: const Text('Detail evenement'),
+        actions: const [HelpAction()],
+      ),
       body: eventAsync.when(
         data: (event) {
           if (event == null) {

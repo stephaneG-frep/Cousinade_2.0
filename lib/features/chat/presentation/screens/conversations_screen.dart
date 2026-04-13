@@ -8,6 +8,7 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../family/presentation/providers/family_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -38,7 +39,10 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Messages')),
+      appBar: AppBar(
+        title: const Text('Messages'),
+        actions: const [HelpAction()],
+      ),
       body: conversationsAsync.when(
         data: (conversations) {
           if (conversations.isEmpty) {

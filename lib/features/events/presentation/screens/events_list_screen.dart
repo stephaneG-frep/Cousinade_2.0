@@ -9,6 +9,7 @@ import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../providers/events_providers.dart';
 
 class EventsListScreen extends ConsumerStatefulWidget {
@@ -46,7 +47,10 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen> {
     final eventsAsync = ref.watch(familyEventsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Evenements')),
+      appBar: AppBar(
+        title: const Text('Evenements'),
+        actions: const [HelpAction()],
+      ),
       body: eventsAsync.when(
         data: (events) {
           if (events.isEmpty) {

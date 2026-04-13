@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../providers/events_providers.dart';
 
 class CreateEventScreen extends ConsumerStatefulWidget {
@@ -99,7 +100,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     final eventState = ref.watch(eventsControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Creer un evenement')),
+      appBar: AppBar(
+        title: const Text('Creer un evenement'),
+        actions: const [HelpAction()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(

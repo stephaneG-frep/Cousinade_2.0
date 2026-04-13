@@ -56,4 +56,8 @@ class EventsRepository {
 
     await eventRef.set(event.toMap());
   }
+
+  Future<void> deleteEvent(String eventId) async {
+    await _firestore.collection(FirestorePaths.events).doc(eventId).delete();
+  }
 }

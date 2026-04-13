@@ -32,7 +32,20 @@ final currentUserProfileProvider = StreamProvider<UserModel?>((ref) {
   if (user == null) {
     return Stream.value(null);
   }
-  return ref.watch(authRepositoryProvider).watchUserProfile(user.uid);
+
+  final authRepository = ref.watch(authRepositoryProvider);
+  bool hasEnsuredProfile = false;
+
+  return authRepository.watchUserProfile(user.uid).asyncMap((profile) async {
+    if (profile != null) return profile;
+    if (hasEnsuredProfile) return null;
+    hasEnsuredProfile = true;
+    try {
+      return await authRepository.ensureUserProfileForAuthUser(user);
+    } catch (_) {
+      return null;
+    }
+  });
 });
 
 final authControllerProvider = AsyncNotifierProvider<AuthController, void>(

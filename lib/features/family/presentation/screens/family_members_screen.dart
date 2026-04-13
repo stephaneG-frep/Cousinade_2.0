@@ -10,6 +10,7 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/user_tile.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../chat/presentation/providers/chat_providers.dart';
 import '../providers/family_providers.dart';
@@ -75,6 +76,7 @@ class _FamilyMembersScreenState extends ConsumerState<FamilyMembersScreen> {
       appBar: AppBar(
         title: const Text('Famille'),
         actions: [
+          const HelpAction(),
           if (familyAsync.valueOrNull != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),

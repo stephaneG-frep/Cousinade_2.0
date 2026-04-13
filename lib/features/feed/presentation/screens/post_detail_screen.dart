@@ -6,6 +6,7 @@ import '../../../../shared/models/post_model.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/post_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../providers/feed_providers.dart';
 
 class PostDetailScreen extends ConsumerStatefulWidget {
@@ -196,6 +197,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
       appBar: AppBar(
         title: const Text('Publication'),
         actions: [
+          const HelpAction(),
           if (managedPost != null)
             PopupMenuButton<String>(
               onSelected: (value) async {

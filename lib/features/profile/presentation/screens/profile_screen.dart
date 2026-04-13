@@ -6,6 +6,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -19,6 +20,7 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Profil'),
         actions: [
+          const HelpAction(),
           IconButton(
             onPressed: () => context.push(AppRoutes.settings),
             icon: const Icon(Icons.settings_outlined),

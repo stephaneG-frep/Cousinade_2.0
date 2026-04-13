@@ -90,4 +90,22 @@ class EventsController extends AsyncNotifier<void> {
       return e.toString().replaceFirst('Exception: ', '');
     }
   }
+
+  Future<String?> deleteEvent(EventModel event) async {
+    try {
+      final user = await _resolveCurrentUser();
+      final isAdmin = user.role == 'admin';
+      if (user.id != event.createdBy && !isAdmin) {
+        return 'Tu ne peux supprimer que tes evenements';
+      }
+
+      state = const AsyncLoading();
+      await ref.read(eventsRepositoryProvider).deleteEvent(event.id);
+      state = const AsyncData(null);
+      return null;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
 }

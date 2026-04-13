@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/user_guide_provider.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
 class UserGuideScreen extends ConsumerStatefulWidget {
@@ -114,7 +115,10 @@ class _UserGuideScreenState extends ConsumerState<UserGuideScreen> {
   Widget build(BuildContext context) {
     final isLast = _index == _steps.length - 1;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mode d\'emploi')),
+      appBar: AppBar(
+        title: const Text('Mode d\'emploi'),
+        actions: const [HelpAction()],
+      ),
       body: Column(
         children: [
           Expanded(

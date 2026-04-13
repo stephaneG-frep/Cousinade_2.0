@@ -11,6 +11,7 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../family/presentation/providers/family_providers.dart';
 import '../providers/feed_providers.dart';
@@ -235,7 +236,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final hasFamily = currentUser?.hasFamily == true;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Publier')),
+      appBar: AppBar(
+        title: const Text('Publier'),
+        actions: const [HelpAction()],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

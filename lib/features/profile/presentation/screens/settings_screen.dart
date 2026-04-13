@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../core/utils/user_guide_provider.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -17,7 +18,10 @@ class SettingsScreen extends ConsumerWidget {
     final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Parametres')),
+      appBar: AppBar(
+        title: const Text('Parametres'),
+        actions: const [HelpAction()],
+      ),
       body: ListView(
         children: [
           const ListTile(

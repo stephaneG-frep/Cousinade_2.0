@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../shared/widgets/help_action.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/family_providers.dart';
 
@@ -63,7 +64,10 @@ class _CreateOrJoinFamilyScreenState
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ma famille')),
+      appBar: AppBar(
+        title: const Text('Ma famille'),
+        actions: const [HelpAction()],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),

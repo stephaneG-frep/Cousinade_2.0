@@ -112,6 +112,9 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read, update: if sameFamily(resource.data.familyId);
       allow create: if sameFamily(request.resource.data.familyId);
+      allow delete: if sameFamily(resource.data.familyId) && (
+        request.auth.uid == resource.data.createdBy || isAdmin()
+      );
     }
 
     match /notifications/{notificationId} {
