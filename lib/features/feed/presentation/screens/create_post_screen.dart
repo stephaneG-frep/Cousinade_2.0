@@ -12,6 +12,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/one_time_tip_card.dart';
 import '../../../../shared/widgets/help_action.dart';
+import '../../../../shared/widgets/media_source_sheet.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../family/presentation/providers/family_providers.dart';
 import '../providers/feed_providers.dart';
@@ -128,7 +129,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImageFromSource(ImageSource source) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_returnToPublishKey, true);
 
@@ -136,7 +137,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     String? errorMsg;
     try {
       image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 75,
       );
     } catch (e) {
@@ -164,7 +165,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     await _persistDraftMedia();
   }
 
-  Future<void> _pickVideo() async {
+  Future<void> _pickVideoFromSource(ImageSource source) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_returnToPublishKey, true);
 
@@ -172,7 +173,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     String? errorMsg;
     try {
       video = await _picker.pickVideo(
-        source: ImageSource.gallery,
+        source: source,
         maxDuration: const Duration(minutes: 3),
       );
     } catch (e) {
@@ -198,6 +199,26 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       _selectedImage = null;
     });
     await _persistDraftMedia();
+  }
+
+  Future<void> _pickImage() async {
+    if (!mounted) return;
+    final source = await showMediaSourceSheet(
+      context,
+      title: 'Ajouter une photo',
+    );
+    if (source == null) return;
+    await _pickImageFromSource(source);
+  }
+
+  Future<void> _pickVideo() async {
+    if (!mounted) return;
+    final source = await showMediaSourceSheet(
+      context,
+      title: 'Ajouter une video',
+    );
+    if (source == null) return;
+    await _pickVideoFromSource(source);
   }
 
   Future<void> _publish() async {

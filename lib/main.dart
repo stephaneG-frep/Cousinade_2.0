@@ -13,6 +13,7 @@ import 'firebase_options.dart';
 import 'shared/widgets/presence_tracker.dart';
 import 'shared/services/notification_service.dart';
 import 'shared/services/firebase_providers.dart';
+import 'features/auth/presentation/providers/auth_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +81,9 @@ class _FamilyMigrationGateState extends ConsumerState<FamilyMigrationGate> {
     if (user == null) return;
 
     try {
+      await ref
+          .read(authRepositoryProvider)
+          .ensureUserProfileForAuthUser(user);
       await ref.read(firestoreProvider).collection('users').doc(user.uid).set(
         {'familyId': 'primary'},
         SetOptions(merge: true),

@@ -50,7 +50,7 @@ class ProfileController extends AsyncNotifier<void> {
 
   Future<UserModel> _resolveCurrentUser() async {
     var user = ref.read(currentUserProfileProvider).valueOrNull;
-    if (user != null) return user;
+    if (user != null && user.hasFamily) return user;
 
     final authRepository = ref.read(authRepositoryProvider);
     final firebaseUser =

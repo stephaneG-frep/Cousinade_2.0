@@ -77,27 +77,46 @@ class _FamilyMembersScreenState extends ConsumerState<FamilyMembersScreen> {
         title: const Text('Famille'),
         actions: [
           const HelpAction(),
-          if (familyAsync.valueOrNull != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Text('Code: ${familyAsync.valueOrNull!.inviteCode}'),
-              ),
-            ),
         ],
       ),
       body: membersAsync.when(
         data: (members) {
           if (members.isEmpty) {
+            final family = familyAsync.valueOrNull;
             return EmptyStateWidget(
               title: 'Aucun membre',
-              subtitle: 'Ajoutez des proches avec votre code famille.',
+              subtitle: family == null
+                  ? 'La famille est introuvable, on va la recreer.'
+                  : 'Invite un proche avec ton code famille.',
               icon: Icons.group_outlined,
-              action: FilledButton.icon(
-                onPressed: () => context.push(AppRoutes.createOrJoinFamily),
-                icon: const Icon(Icons.group_add_outlined),
-                label: const Text('Inviter un membre'),
-              ),
+              action: family == null
+                  ? FilledButton.icon(
+                      onPressed: () async {
+                        final error = await ref
+                            .read(familyControllerProvider.notifier)
+                            .autoJoinDefaultFamily();
+                        if (!context.mounted) return;
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error)),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Famille recreee'),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Recreer la famille'),
+                    )
+                  : FilledButton.icon(
+                      onPressed: () =>
+                          _copyInviteCode(context, family.inviteCode),
+                      icon: const Icon(Icons.copy),
+                      label: const Text('Copier le code'),
+                    ),
             );
           }
 
@@ -174,41 +193,7 @@ class _FamilyMembersScreenState extends ConsumerState<FamilyMembersScreen> {
                       ),
                     );
                   }
-                  return AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Inviter un cousin',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'S\'il n\'apparait pas ici, il doit rejoindre avec le code:',
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                family.inviteCode,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () =>
-                                  _copyInviteCode(context, family.inviteCode),
-                              icon: const Icon(Icons.copy),
-                              label: const Text('Copier'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
+                  return const SizedBox.shrink();
                 }
                 if (index == 2) {
                   return Padding(
@@ -387,12 +372,7 @@ class _FamilyMembersScreenState extends ConsumerState<FamilyMembersScreen> {
         loading: () =>
             const LoadingWidget(message: 'Chargement des membres...'),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'family_invite_fab',
-        onPressed: () => context.push(AppRoutes.createOrJoinFamily),
-        icon: const Icon(Icons.group_add),
-        label: const Text('Invitation'),
-      ),
+      floatingActionButton: null,
     );
   }
 }

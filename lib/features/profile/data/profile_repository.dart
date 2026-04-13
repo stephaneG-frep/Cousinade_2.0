@@ -31,7 +31,6 @@ class ProfileRepository {
     File? avatar,
   }) async {
     await _firestore.collection(FirestorePaths.users).doc(userId).set({
-      'id': userId,
       'firstName': firstName.trim(),
       'lastName': lastName.trim(),
       'displayName': '${firstName.trim()} ${lastName.trim()}'.trim(),
@@ -44,6 +43,7 @@ class ProfileRepository {
       final avatarUrl = await _storageService.uploadFile(
         file: avatar,
         path: 'avatars/$userId.jpg',
+        contentType: 'image/jpeg',
       );
       await _firestore.collection(FirestorePaths.users).doc(userId).set({
         'avatarUrl': avatarUrl,

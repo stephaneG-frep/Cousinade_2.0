@@ -60,6 +60,16 @@ class _PresenceTrackerState extends ConsumerState<PresenceTracker>
   Future<void> _setOnline(bool isOnline) async {
     final user = ref.read(currentFirebaseUserProvider);
     if (user == null) return;
+    final profile = ref.read(currentUserProfileProvider).valueOrNull;
+    if (profile == null) {
+      try {
+        await ref
+            .read(authRepositoryProvider)
+            .ensureUserProfileForAuthUser(user);
+      } catch (_) {
+        return;
+      }
+    }
     await ref
         .read(profileRepositoryProvider)
         .updatePresence(userId: user.uid, isOnline: isOnline);

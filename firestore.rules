@@ -25,6 +25,38 @@ service cloud.firestore {
         familyId == 'primary';
     }
 
+    function isString(value) {
+      return value is string;
+    }
+
+    function stringLengthInRange(value, min, max) {
+      return isString(value) && value.size() >= min && value.size() <= max;
+    }
+
+    function optionalStringInRange(value, max) {
+      return value == null || (isString(value) && value.size() <= max);
+    }
+
+    function isTimestamp(value) {
+      return value is timestamp;
+    }
+
+    function isValidLikeCountUpdate(oldData, newData) {
+      return newData.likeCount is int &&
+        oldData.likeCount is int &&
+        newData.likeCount >= 0 &&
+        newData.likeCount <= oldData.likeCount + 1 &&
+        newData.likeCount >= oldData.likeCount - 1;
+    }
+
+    function isValidCommentCountUpdate(oldData, newData) {
+      return newData.commentCount is int &&
+        oldData.commentCount is int &&
+        newData.commentCount >= 0 &&
+        newData.commentCount <= oldData.commentCount + 1 &&
+        newData.commentCount >= oldData.commentCount - 1;
+    }
+
     function postFamilyId(postId) {
       return get(/databases/$(database)/documents/posts/$(postId)).data.familyId;
     }
@@ -39,13 +71,59 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || resource.data.familyId == userFamilyId());
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.id == userId &&
+        request.resource.data.role == 'member' &&
+        request.resource.data.familyId == 'primary' &&
+        request.resource.data.email == request.auth.token.email &&
+        stringLengthInRange(request.resource.data.firstName, 1, 40) &&
+        stringLengthInRange(request.resource.data.lastName, 1, 60) &&
+        stringLengthInRange(request.resource.data.displayName, 1, 80) &&
+        isTimestamp(request.resource.data.createdAt);
       allow update: if isSignedIn() && (
-        request.auth.uid == userId ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'isOnline',
+            'lastActiveAt'
+          ]) &&
+          request.resource.data.isOnline is bool &&
+          (request.resource.data.lastActiveAt == null ||
+            isTimestamp(request.resource.data.lastActiveAt))
+        ) ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'firstName',
+            'lastName',
+            'displayName',
+            'bio',
+            'avatarUrl',
+            'isOnline',
+            'lastActiveAt'
+          ]) &&
+          stringLengthInRange(request.resource.data.firstName, 1, 40) &&
+          stringLengthInRange(request.resource.data.lastName, 1, 60) &&
+          stringLengthInRange(request.resource.data.displayName, 1, 80) &&
+          optionalStringInRange(request.resource.data.bio, 300) &&
+          optionalStringInRange(request.resource.data.avatarUrl, 500)
+        ) ||
+        (
+          request.auth.uid == userId &&
+          (resource.data.familyId == null || resource.data.familyId == '') &&
+          request.resource.data.familyId == 'primary' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'familyId'
+          ])
+        ) ||
         (
           isAdmin() &&
           resource.data.familyId == userFamilyId() &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyId', 'role'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'familyId',
+            'role'
+          ])
         )
       );
     }
@@ -67,7 +145,19 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if sameFamily(resource.data.familyId);
       allow update: if sameFamily(resource.data.familyId) && (
-        request.auth.uid == resource.data.authorId ||
+        (
+          request.auth.uid == resource.data.authorId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'text',
+            'imageUrl',
+            'videoUrl',
+            'videoThumbnailUrl'
+          ]) &&
+          optionalStringInRange(request.resource.data.text, 1000) &&
+          optionalStringInRange(request.resource.data.imageUrl, 500) &&
+          optionalStringInRange(request.resource.data.videoUrl, 500) &&
+          optionalStringInRange(request.resource.data.videoThumbnailUrl, 500)
+        ) ||
         (
           isAdmin() &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -76,12 +166,29 @@ service cloud.firestore {
             'videoThumbnailUrl'
           ])
         ) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount', 'commentCount'])
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'likeCount',
+            'commentCount'
+          ]) &&
+          isValidLikeCountUpdate(resource.data, request.resource.data) &&
+          isValidCommentCountUpdate(resource.data, request.resource.data)
+        )
       );
       allow delete: if sameFamily(resource.data.familyId) && (
         request.auth.uid == resource.data.authorId || isAdmin()
       );
-      allow create: if sameFamily(request.resource.data.familyId);
+      allow create: if sameFamily(request.resource.data.familyId) &&
+        request.resource.data.authorId == request.auth.uid &&
+        stringLengthInRange(request.resource.data.authorName, 1, 80) &&
+        optionalStringInRange(request.resource.data.authorAvatar, 500) &&
+        optionalStringInRange(request.resource.data.text, 1000) &&
+        optionalStringInRange(request.resource.data.imageUrl, 500) &&
+        optionalStringInRange(request.resource.data.videoUrl, 500) &&
+        optionalStringInRange(request.resource.data.videoThumbnailUrl, 500) &&
+        request.resource.data.likeCount == 0 &&
+        request.resource.data.commentCount == 0 &&
+        isTimestamp(request.resource.data.createdAt);
 
       match /likes/{userId} {
         allow read, write: if isSignedIn() && sameFamily(postFamilyId(postId));
@@ -89,29 +196,50 @@ service cloud.firestore {
     }
 
     match /comments/{commentId} {
-      allow read, update: if isSignedIn() && sameFamily(postFamilyId(resource.data.postId));
+      allow read: if isSignedIn() && sameFamily(postFamilyId(resource.data.postId));
+      allow update: if false;
       allow delete: if isSignedIn() &&
         sameFamily(postFamilyId(resource.data.postId)) && (
           request.auth.uid == resource.data.authorId ||
           request.auth.uid == postAuthorId(resource.data.postId) ||
           isAdmin()
         );
-      allow create: if isSignedIn() && sameFamily(postFamilyId(request.resource.data.postId));
+      allow create: if isSignedIn() &&
+        sameFamily(postFamilyId(request.resource.data.postId)) &&
+        request.resource.data.authorId == request.auth.uid &&
+        stringLengthInRange(request.resource.data.text, 1, 500) &&
+        isTimestamp(request.resource.data.createdAt);
     }
 
     match /conversations/{conversationId} {
       allow read, update: if isSignedIn() && sameFamily(resource.data.familyId);
-      allow create: if isSignedIn() && sameFamily(request.resource.data.familyId);
+      allow create: if isSignedIn() &&
+        sameFamily(request.resource.data.familyId) &&
+        request.resource.data.participantIds is list &&
+        request.resource.data.participantIds.hasAny([request.auth.uid]);
     }
 
     match /messages/{messageId} {
       allow read, update: if isSignedIn() && sameFamily(conversationFamilyId(resource.data.conversationId));
-      allow create: if isSignedIn() && sameFamily(conversationFamilyId(request.resource.data.conversationId));
+      allow create: if isSignedIn() &&
+        sameFamily(conversationFamilyId(request.resource.data.conversationId)) &&
+        request.resource.data.senderId == request.auth.uid &&
+        optionalStringInRange(request.resource.data.text, 1000) &&
+        isTimestamp(request.resource.data.createdAt);
     }
 
     match /events/{eventId} {
-      allow read, update: if sameFamily(resource.data.familyId);
-      allow create: if sameFamily(request.resource.data.familyId);
+      allow read: if sameFamily(resource.data.familyId);
+      allow update: if sameFamily(resource.data.familyId) && (
+        request.auth.uid == resource.data.createdBy || isAdmin()
+      );
+      allow create: if sameFamily(request.resource.data.familyId) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        stringLengthInRange(request.resource.data.title, 1, 80) &&
+        optionalStringInRange(request.resource.data.description, 800) &&
+        optionalStringInRange(request.resource.data.location, 120) &&
+        isTimestamp(request.resource.data.startDate) &&
+        isTimestamp(request.resource.data.createdAt);
       allow delete: if sameFamily(resource.data.familyId) && (
         request.auth.uid == resource.data.createdBy || isAdmin()
       );

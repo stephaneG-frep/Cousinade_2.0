@@ -71,14 +71,21 @@ class AuthRepository {
     final existing = await userRef.get();
 
     if (existing.exists && existing.data() != null) {
-      return UserModel.fromMap(existing.data()!);
+      final data = existing.data()!;
+      final current = UserModel.fromMap(data);
+      final familyId = (data['familyId'] as String?) ?? '';
+      if (familyId.isEmpty) {
+        await userRef.set({'familyId': 'primary'}, SetOptions(merge: true));
+        return current.copyWith(familyId: 'primary');
+      }
+      return current;
     }
 
     final email = (authUser.email ?? '').trim();
     final rawDisplayName = (authUser.displayName ?? '').trim();
 
     String firstName = 'Membre';
-    String lastName = '';
+    String lastName = 'Famille';
     String displayName = 'Membre';
 
     if (rawDisplayName.isNotEmpty) {
@@ -96,6 +103,7 @@ class AuthRepository {
 
     final userModel = UserModel(
       id: authUser.uid,
+      familyId: 'primary',
       role: 'member',
       firstName: firstName,
       lastName: lastName,

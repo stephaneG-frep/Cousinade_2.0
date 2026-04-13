@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/help_action.dart';
+import '../../../../shared/widgets/media_source_sheet.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/profile_providers.dart';
 
@@ -87,11 +88,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
+    if (!mounted) return;
+    final source = await showMediaSourceSheet(
+      context,
+      title: 'Photo de profil',
+    );
+    if (source == null) return;
+
     XFile? image;
     String? errorMsg;
     try {
       image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 75,
       );
     } catch (e) {

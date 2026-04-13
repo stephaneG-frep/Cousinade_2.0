@@ -6,6 +6,8 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../core/utils/user_guide_provider.dart';
 import '../../../../shared/widgets/help_action.dart';
+import '../../../../shared/widgets/share_app_sheet.dart';
+import '../../../../shared/widgets/apk_help_sheet.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -33,6 +35,18 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notifications'),
             onTap: () => context.push(AppRoutes.notifications),
+          ),
+          ListTile(
+            leading: const Icon(Icons.share_outlined),
+            title: const Text('Partager l\'application'),
+            subtitle: const Text('SMS, email ou copier le lien'),
+            onTap: () => ShareAppSheet.show(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Aide installation APK'),
+            subtitle: const Text('Expliquer comment installer'),
+            onTap: () => ApkHelpSheet.show(context),
           ),
           if (currentUser?.role == 'admin')
             ListTile(

@@ -54,6 +54,7 @@ class FeedRepository {
       imageUrl = await _storageService.uploadFile(
         file: image,
         path: 'posts/$familyId/${postRef.id}.jpg',
+        contentType: 'image/jpeg',
         onProgress: onUploadProgress,
       );
     }
@@ -62,9 +63,11 @@ class FeedRepository {
     String? videoThumbnailUrl;
     if (video != null) {
       final extension = _extractExtension(video.path, fallback: 'mp4');
+      final videoContentType = _videoContentType(extension);
       videoUrl = await _storageService.uploadFile(
         file: video,
         path: 'posts/$familyId/${postRef.id}.$extension',
+        contentType: videoContentType,
         onProgress: onUploadProgress == null
             ? null
             : (progress) => onUploadProgress(progress * 0.9),
@@ -76,6 +79,7 @@ class FeedRepository {
           videoThumbnailUrl = await _storageService.uploadFile(
             file: thumbnailFile,
             path: 'posts/$familyId/${postRef.id}_thumb.jpg',
+            contentType: 'image/jpeg',
             onProgress: onUploadProgress == null
                 ? null
                 : (progress) => onUploadProgress(0.9 + (progress * 0.1)),
@@ -113,6 +117,21 @@ class FeedRepository {
     if (dotIndex == -1 || dotIndex == path.length - 1) return fallback;
     final ext = path.substring(dotIndex + 1).toLowerCase();
     return ext.isEmpty ? fallback : ext;
+  }
+
+  String _videoContentType(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'mov':
+        return 'video/quicktime';
+      case '3gp':
+        return 'video/3gpp';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'webm':
+        return 'video/webm';
+      default:
+        return 'video/mp4';
+    }
   }
 
   Future<File?> _generateVideoThumbnail(String videoPath) async {
