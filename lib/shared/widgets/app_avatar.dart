@@ -20,20 +20,29 @@ class AppAvatar extends StatelessWidget {
         ? '?'
         : initial.trim()[0].toUpperCase();
 
-    return CircleAvatar(
+    final placeholder = CircleAvatar(
       radius: radius,
       backgroundColor: AppColors.roseBeige,
-      backgroundImage: imageUrl != null && imageUrl!.isNotEmpty
-          ? NetworkImage(imageUrl!)
-          : null,
-      child: imageUrl == null || imageUrl!.isEmpty
-          ? Text(
-              safeInitial,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: AppColors.darkText),
-            )
-          : null,
+      child: Text(
+        safeInitial,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(color: AppColors.darkText),
+      ),
+    );
+
+    if (imageUrl == null || imageUrl!.isEmpty) return placeholder;
+
+    return ClipOval(
+      child: SizedBox.square(
+        dimension: radius * 2,
+        child: Image.network(
+          imageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, e, _) => placeholder,
+        ),
+      ),
     );
   }
 }

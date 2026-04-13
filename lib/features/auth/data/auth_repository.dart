@@ -36,6 +36,7 @@ class AuthRepository {
 
     final userModel = UserModel(
       id: user.uid,
+      familyId: 'primary',
       role: 'member',
       firstName: firstName.trim(),
       lastName: lastName.trim(),

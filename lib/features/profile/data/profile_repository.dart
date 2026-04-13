@@ -48,6 +48,10 @@ class ProfileRepository {
       await _firestore.collection(FirestorePaths.users).doc(userId).set({
         'avatarUrl': avatarUrl,
       }, SetOptions(merge: true));
+
+      // Propagate the new avatar to existing posts — best effort, non-blocking.
+      _updateAuthorAvatarInPosts(userId: userId, avatarUrl: avatarUrl)
+          .catchError((_) {});
     } on FirebaseException catch (e) {
       if (e.code == 'object-not-found' || e.code == 'unknown') {
         throw Exception(
@@ -55,6 +59,29 @@ class ProfileRepository {
         );
       }
       throw Exception(e.message ?? 'Echec upload photo');
+    }
+  }
+
+  Future<void> _updateAuthorAvatarInPosts({
+    required String userId,
+    required String avatarUrl,
+  }) async {
+    final snapshot = await _firestore
+        .collection(FirestorePaths.posts)
+        .where('authorId', isEqualTo: userId)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+
+    const batchSize = 400;
+    for (var i = 0; i < snapshot.docs.length; i += batchSize) {
+      final end = (i + batchSize < snapshot.docs.length)
+          ? i + batchSize
+          : snapshot.docs.length;
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs.sublist(i, end)) {
+        batch.update(doc.reference, {'authorAvatar': avatarUrl});
+      }
+      await batch.commit();
     }
   }
 
